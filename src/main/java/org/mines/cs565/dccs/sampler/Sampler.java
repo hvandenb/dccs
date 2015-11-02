@@ -26,11 +26,11 @@ public class Sampler implements Runnable {
 	private int sampleIndex = 0;
 	
 	@Autowired
-	private final CounterService samplerCounter;
+	private CounterService samplerCounter;
 	
 	private CompletableFuture<DistributedQueue<String>> queue;
 	
-	@Value("${sampler.queueName")
+	@Value("${sampler.queueName}")
 	private String queueName = SamplerConstants.DEFAULT_MEASUREMENT_QUEUE;
 	
 	@Autowired
@@ -40,23 +40,29 @@ public class Sampler implements Runnable {
 	public void run() {
 		log.info("Time to sample");
 		//log.info(Thread.currentThread().getName() + " working ... Time - " + new Date());
-		
-		sampleIndex++;
-		
-		// Reset the index when we've reached the end
-		if (sampleIndex > timingVector.size())
-			sampleIndex = 0;
-		
-		samplerCounter.increment("sampler.counter.invocations");
 
-		// Only when the vector tells us to sample we'll sample
-		if (timingVector.get(sampleIndex-1).booleanValue()) {
-			samplerCounter.increment("sampler.counter.samples");
+		samplerCounter.increment("sampler.counter.invocations");
+		
+		if (timingVector.size() > 0) {
+			sampleIndex++;
 			
-			if (queue != null) {
-				//queue.add("");
+			// Reset the index when we've reached the end
+			if (sampleIndex > timingVector.size())
+				sampleIndex = 1;
+			
+	
+			// Only when the vector tells us to sample we'll sample
+			if (timingVector.get(sampleIndex-1).booleanValue()) {
+				samplerCounter.increment("sampler.counter.samples");
+				
+				if (queue != null) {
+					//queue.add("");
+				}
+				
 			}
-			
+		}
+		else {
+			log.warn("The timing vector is empty, so we can't sample");
 		}
 	
 		

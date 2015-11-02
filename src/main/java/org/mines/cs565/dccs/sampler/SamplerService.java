@@ -24,16 +24,20 @@ import javax.annotation.Resource;
 import org.slf4j.Logger;
 
 /**
- * @author henrivandenbulk
+ * @author hvandenb
  *
  */
 @Service
 @Slf4j
 public class SamplerService {
 	
-	@Value("${sampler.rate}")
-	private Long samplingRate = 0L;
+	@Value("${sampler.frequency}")
+	private float sourceFrequency = 0;
+	private long samplingRate = 0;
     
+	@Value("${sampler.multiplier}")
+	private int multiplier = SamplerConstants.DEFAULT_MULTIPLIER;
+	
     ThreadPoolTaskScheduler threadPoolTaskScheduler;
         
 	@Autowired
@@ -44,9 +48,9 @@ public class SamplerService {
 	 * Using the formula T = 1 / f 
 	 * @return Sampling Interval in ms
 	 */
-	public long calculateSamplingInterval(int frequency) {
-		int T=0;
-		T= (1 / frequency) * 1000;
+	public long calculateSamplingInterval(float frequency) {
+		long T=0;
+		T= (long) (multiplier * (1 / frequency) * 1000);
 		
 		return T;
 	}
@@ -84,7 +88,7 @@ public class SamplerService {
 	 */
 	public void changeSchedule(long rate) {
 		this.samplingRate = rate;
-		threadPoolTaskScheduler.scheduleWithFixedDelay(sampler, samplingRate);
+		threadPoolTaskScheduler.scheduleWithFixedDelay(sampler, samplingRate); // schedule in ms
 	
 	}
 
@@ -97,7 +101,8 @@ public class SamplerService {
 	    threadPoolTaskScheduler.setThreadNamePrefix("SamplerJob");
 	    threadPoolTaskScheduler.initialize();
 	    
-	    this.changeSchedule(this.samplingRate);
+	    samplingRate = calculateSamplingInterval(this.sourceFrequency);
+//	    changeSchedule(samplingRate);
 	}
 	/**
 	 * Close things down before the object gets destroyed.

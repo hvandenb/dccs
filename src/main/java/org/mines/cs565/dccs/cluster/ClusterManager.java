@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutionException;
 import javax.annotation.PostConstruct;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.google.common.base.Splitter;
@@ -58,30 +59,12 @@ public class ClusterManager {
 		
 	}
 
-//	@PostConstruct
-	void init() {
-
-		log.info("Initialize the ClusterManager");
-		this.splitter = Splitter.onPattern(ClusterConstants.DEFAULT_DELIMITER).omitEmptyStrings().trimResults();
-
-        try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		Address address = new Address(settings.getHostName(), settings.getPort());
-
-		buildPeers(this.settings.getMembers());
-
-		String logDir = settings.getLogLocation() + UUID.randomUUID().toString();
-		log.info("Data Log location: [{}]", logDir);
-		atomix = AtomixReplica.builder(address, this.members).
-				withTransport(new NettyTransport()).
-				withStorage(Storage.builder().withDirectory(logDir).build()).
-				build();
-
+	/**
+	 * Run the Cluster an we get invoked in an Async way by the task scheduler so we can keep
+	 * running
+	 */
+	@Async
+	private void run() {
 		atomix.open().join();
 
 		log.info("Creating membership group");
@@ -147,6 +130,33 @@ public class ClusterManager {
 //			log.info("Replica started!");
 //		});
 
+	}
+	
+//	@PostConstruct
+	void init() {
+
+		log.info("Initialize the ClusterManager");
+		this.splitter = Splitter.onPattern(ClusterConstants.DEFAULT_DELIMITER).omitEmptyStrings().trimResults();
+
+        try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		Address address = new Address(settings.getHostName(), settings.getPort());
+
+		buildPeers(this.settings.getMembers());
+
+		String logDir = settings.getLogLocation() + UUID.randomUUID().toString();
+		log.info("Data Log location: [{}]", logDir);
+		atomix = AtomixReplica.builder(address, this.members).
+				withTransport(new NettyTransport()).
+				withStorage(Storage.builder().withDirectory(logDir).build()).
+				build();
+		
+		this.run(); // Async call
 	}
 
 	/**
