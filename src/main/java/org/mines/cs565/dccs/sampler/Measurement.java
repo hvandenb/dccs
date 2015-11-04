@@ -4,13 +4,21 @@
 package org.mines.cs565.dccs.sampler;
 
 import java.util.BitSet;
+import java.util.Date;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 /**
  * @author Henri M.B. van den Bulk
  *
  */
-public class Measurement {
+@Data
+@AllArgsConstructor
+public class Measurement{
 
-	BitSet sample;
+	private long timeTick = 0;
+	private float value = 0;;
+	
 	
 }
