@@ -35,5 +35,4 @@ public class SignalProperties {
 	private float offset = GeneratorConstants.DEFAULT_OFFSET;
 	private float invert = GeneratorConstants.DEFAULT_INVERT; // Yes=-1, No=1
 	
-	private String file = "wave.csv";
 }

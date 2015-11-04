@@ -38,6 +38,9 @@ public class SignalGenerator {
 	@Autowired
 	private SignalProperties properties;
 	
+	@Autowired
+	private SignalWriter writer;
+	
     /// Time the signal generator was started
     private long startTime;
     private final Stopwatch stopwatch = Stopwatch.createUnstarted();
