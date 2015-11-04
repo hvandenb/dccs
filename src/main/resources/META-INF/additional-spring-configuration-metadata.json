@@ -1,0 +1,62 @@
+{"properties": [
+  {
+    "name": "generator.frequency",
+    "type": "java.lang.String",
+    "description": "Signal Frequency"
+  },
+  {
+    "name": "sampler.frequency",
+    "type": "java.lang.String",
+    "description": "A description for 'sampler.frequency'"
+  },
+  {
+    "name": "sampler.timingVectorSize",
+    "type": "java.lang.String",
+    "description": "A description for 'sampler.timingVectorSize'"
+  },
+  {
+    "name": "sampler.queueName",
+    "type": "java.lang.String",
+    "description": "A description for 'sampler.queueName'"
+  },
+  {
+    "name": "sampler.multiplier",
+    "type": "java.lang.String",
+    "description": "A description for 'sampler.multiplier'"
+  },
+  {
+    "name": "sampler.bits",
+    "type": "java.lang.String",
+    "description": "A description for 'sampler.bits'"
+  },
+  {
+    "name": "generator.samplingRate",
+    "type": "java.lang.String",
+    "description": "A description for 'generator.samplingRate'"
+  },
+  {
+    "name": "generator.sampleSize",
+    "type": "java.lang.String",
+    "description": "A description for 'generator.sampleSize'"
+  },
+  {
+    "name": "generator.bufferDuration",
+    "type": "java.lang.String",
+    "description": "A description for 'generator.bufferDuration'"
+  },
+  {
+    "name": "generator.bits",
+    "type": "java.lang.String",
+    "description": "A description for 'generator.bits'"
+  },
+  {
+    "name": "generator.offset",
+    "type": "java.lang.String",
+    "description": "A description for 'generator.offset'"
+  },
+  {
+    "name": "generator.file",
+    "type": "java.lang.String",
+    "description": "A description for 'generator.file'"
+  }
+]}

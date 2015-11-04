@@ -2,6 +2,7 @@ package org.mines.cs565.dccs.generator;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -18,46 +19,41 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import com.google.common.base.Stopwatch;
+
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
 public class SignalGenerator {
 
-	@Value("${generator.frequency}")
-	private float frequency = GeneratorConstants.DEFAULT_FREQUENCY;
-
-	@Value("${generator.bits}")
-	private int bits = GeneratorConstants.DEFAULT_BITS;
-	@Value("${generator.samplingRate}")
-	private int samplingRate = GeneratorConstants.DEFAULT_SAMPLING_RATE;
-	@Value("${generator.sampleSize}")
-	private int sampleSize = GeneratorConstants.DEFAULT_SAMPLE_SIZE; // Sample size in bytes
-	@Value("${generator.bufferDuration}")
-	private int bufferDuration = GeneratorConstants.DEFAULT_BUFFER_DURATION; // About a 100ms buffer
 
 	private AudioFormat format;
 	private SourceDataLine line;
 	private int packageSize = 0;
 	private boolean exitThread = false;
-	
-	enum WaveShape {
-		SIN, SQU, SAW
-	}
-	
-	private WaveShape shape = WaveShape.SIN;
-	
-//	@Autowired
-//	private TaskExecutor taskExecutor;
 
+	@Autowired
+	private SignalProperties properties;
+	
+    /// Time the signal generator was started
+    private long startTime;
+    private final Stopwatch stopwatch = Stopwatch.createUnstarted();
+
+    /// Ticks per second on this CPU
+//    private long ticksPerSecond = Stopwatch.Frequency;
+	
 	public AudioFormat createAudioFormat() {
-		return new AudioFormat(1 / frequency, bits, 1, true, true);
+		return new AudioFormat(1 / properties.getFrequency(), properties.getBits(), 1, true, true);
 	}
+
 
 	@PostConstruct
 	void init() {
 		log.info("Initialize the signal generator");
-		packageSize = (int)(((float)bufferDuration / 1000) * samplingRate * sampleSize) * 2;
+		packageSize = (int)(((float)properties.getBufferDuration() / 1000) * properties.getSamplingRate() * properties.getSampleSize()) * 2;
 	
 //		try {
 //			format = createAudioFormat();
@@ -81,7 +77,7 @@ public class SignalGenerator {
 		
 	    // Start the thread
 //	    this.run();
-		this.getSamples();
+//		this.getSamples();
 	}
 	
 	/**
@@ -94,6 +90,7 @@ public class SignalGenerator {
 		 line.drain();
          line.close();
 		}
+		stopwatch.start();
 	}
 	
 	public void exit() {
@@ -116,14 +113,14 @@ public class SignalGenerator {
     private double getSample(double cyclePosition) {
     	double value = 0;
     	
-    	switch (shape) {
-		case SAW:
+    	switch (properties.getShape()) {
+		case SAWTOOTH:
 			value = 2.0 * (cyclePosition - Math.floor(cyclePosition + 0.5));
 			break;
-		case SIN:
+		case SINE:
 			value = Math.sin(2*Math.PI * cyclePosition);
 			break;
-		case SQU:
+		case SQUARE:
 			break;
 		default:
 			break;
@@ -134,7 +131,48 @@ public class SignalGenerator {
     }
 	
     /**
-     * Get a buffer of oscilator samples
+     * Returns the next sample based on a time
+     * @param time
+     * @return
+     */
+    private float getSample(float time) {
+        float value = 0f;
+        float t = properties.getFrequency() * time + properties.getPhase();
+    	
+    	switch (properties.getShape()) {
+		case SAWTOOTH:
+//			value = 2.0 * (cyclePosition - Math.floor(cyclePosition + 0.5));
+			// 2 * ( t/a - floor( t/a + 1/2 ) )
+            value = 2f*(t-(float)Math.floor(t+0.5f));
+			break;
+		case SINE: // sin( 2 * pi * t )
+//			value = Math.sin(2*Math.PI * cyclePosition);
+			value = (float)Math.sin(2 * Math.PI * t);
+			break;
+		case SQUARE: 
+			value = (float) Math.signum(Math.sin(2f * Math.PI * t));
+			break;
+		case TRIANGLE:
+			// 2 * abs( t - 2 * floor( t / 2 ) - 1 ) - 1
+            value = 1f-4f*(float)Math.abs
+                ( Math.round(t-0.25f)-(t-0.25f) );
+		default:
+			break;
+    	
+    	}
+    	
+    	return value;
+    }    
+    
+    
+    public float getValue()
+    {
+        float time = (float)(stopwatch.elapsed(TimeUnit.NANOSECONDS));
+//                        / ticksPerSecond;
+        return getSample(time);
+    }
+    /**
+     * Get a buffer of oscillator samples
      * @return Buffer of samples
      */
     public ByteBuffer getSamples() {
@@ -142,12 +180,12 @@ public class SignalGenerator {
 		// Position through the sine wave as a percentage (i.e. 0-1 is 0-2*PI)
 		double cyclePosition = 0;
 		
-		double cylce = frequency/samplingRate;   // Fraction of cycle between samples
+		double cylce = properties.getFrequency() / properties.getSamplingRate();   // Fraction of cycle between samples
 
 		signalBuffer.clear();                             //Toss out samples from previous pass
 
         // Generate sinePackageSize samples based on the current cycle from frequency
-        for (int i=0; i < packageSize/sampleSize; i++) {
+        for (int i=0; i < packageSize/ properties.getSampleSize(); i++) {
         	signalBuffer.putShort((short)(Short.MAX_VALUE * getSample(cyclePosition)));
 
         	cyclePosition += cylce;
@@ -158,35 +196,43 @@ public class SignalGenerator {
         return signalBuffer;
     }
     
-	@Async
+    public void reset() {
+    	stopwatch.reset();
+    }
+    
+//	@Async
 	public void run() {
-		log.info("Generating the buffer");
+		log.info("Running the Generator");
 		
-		ByteBuffer signalBuffer = null;
+		// Restart the stop watch
+		stopwatch.reset();
+		stopwatch.start();
 		
-		// Keep running..
-		while(exitThread==false) {
-			double cylce = frequency/samplingRate;   //Fraction of cycle between samples
-
-			signalBuffer.clear();                             //Toss out samples from previous pass
-			signalBuffer = getSamples();
-			
-            // Write sine samples to the line buffer
-            // If the audio buffer is full, this would block until there is enough room,
-            // but we are not writing unless we know there is enough space.
-//            line.write(signalBuffer.array(), 0, signalBuffer.position());    
-            log.info("Created signal buffer of size [{}]", signalBuffer.position());
-
-            // Wait here until there are less than SINE_PACKET_SIZE samples in the buffer
-            // (Buffer size is 2*SINE_PACKET_SIZE at least, so there will be room for 
-            // at least SINE_PACKET_SIZE samples when this is true)
-            try {
-               while (getLineSampleCount() > packageSize) 
-                  Thread.sleep(1);                          // Give the system some time to run
-            }
-            catch (InterruptedException e) {                // We don't care about this
-            }
-		}
+//		ByteBuffer signalBuffer = null;
 		
+//		// Keep running..
+//		while(exitThread==false) {
+//			double cylce = properties.getFrequency() / properties.getSamplingRate();   //Fraction of cycle between samples
+//
+//			signalBuffer.clear();                             //Toss out samples from previous pass
+//			signalBuffer = getSamples();
+//			
+//            // Write sine samples to the line buffer
+//            // If the audio buffer is full, this would block until there is enough room,
+//            // but we are not writing unless we know there is enough space.
+////            line.write(signalBuffer.array(), 0, signalBuffer.position());    
+//            log.info("Created signal buffer of size [{}]", signalBuffer.position());
+//
+//            // Wait here until there are less than SINE_PACKET_SIZE samples in the buffer
+//            // (Buffer size is 2*SINE_PACKET_SIZE at least, so there will be room for 
+//            // at least SINE_PACKET_SIZE samples when this is true)
+//            try {
+//               while (getLineSampleCount() > packageSize) 
+//                  Thread.sleep(1);                          // Give the system some time to run
+//            }
+//            catch (InterruptedException e) {                // We don't care about this
+//            }
+//		}
+//		
 	}
 }
