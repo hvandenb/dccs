@@ -15,5 +15,8 @@ public class GeneratorConstants {
 	public static final float DEFAULT_AMPLITUDE = 1f;
 	public static final float DEFAULT_OFFSET = 0f;
 	public static final float DEFAULT_INVERT = 1; // Yes=-1, No=1
+	
+	public static final String DEFAULT_OUTPUT_FILENAME ="wave.csv";
+	public static final boolean DEFAULT_ENABLE_OUTPUT = false;
 
 }

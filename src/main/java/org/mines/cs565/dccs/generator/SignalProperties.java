@@ -25,6 +25,9 @@ public class SignalProperties {
 	
 	private WaveShape shape = WaveShape.SINE;
 
+	/**
+	 * is the frequency of the source that you'd want to sample
+	 */
 	private float frequency = GeneratorConstants.DEFAULT_FREQUENCY;
 	private float phase = GeneratorConstants.DEFAULT_PHASE;
 	private float amplitude = GeneratorConstants.DEFAULT_AMPLITUDE;
@@ -34,5 +37,8 @@ public class SignalProperties {
 	private int bufferDuration = GeneratorConstants.DEFAULT_BUFFER_DURATION; // About a 100ms buffer
 	private float offset = GeneratorConstants.DEFAULT_OFFSET;
 	private float invert = GeneratorConstants.DEFAULT_INVERT; // Yes=-1, No=1
+	private String outputFileName = GeneratorConstants.DEFAULT_OUTPUT_FILENAME;
+	private boolean enableOutput = GeneratorConstants.DEFAULT_ENABLE_OUTPUT;
+	
 	
 }

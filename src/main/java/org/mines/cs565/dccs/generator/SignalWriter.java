@@ -31,67 +31,67 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class SignalWriter {
 
-	//Delimiter used in CSV file
-		private static final String NEW_LINE_SEPARATOR = "\n";
-		//CSV file header
-		private static final Object [] FILE_HEADER = {"timestamp","value"};
-		
-		FileWriter fileWriter = null;
-		Optional<CSVPrinter> csvFilePrinter = null;
-		//Create the CSVFormat object with "\n" as a record delimiter
-        CSVFormat csvFileFormat = CSVFormat.DEFAULT.withRecordSeparator(NEW_LINE_SEPARATOR);
-        
-        @Value("${generator.file")
-    	private String fileName = "wave.csv";
+	// Delimiter used in CSV file
+	private static final String NEW_LINE_SEPARATOR = "\n";
+	// CSV file header
+	private static final Object[] FILE_HEADER = { "timestamp", "value" };
 
-		@PostConstruct
-		void init() {
-			log.info("Initialize the SignalWriter");
-			
-			//initialize FileWriter object
+	FileWriter fileWriter = null;
+	Optional<CSVPrinter> csvFilePrinter = null;
+	// Create the CSVFormat object with "\n" as a record delimiter
+	CSVFormat csvFileFormat = CSVFormat.DEFAULT.withRecordSeparator(NEW_LINE_SEPARATOR);
+
+	@Value("${generator.outputFileName}")
+	private String fileName;
+
+	@PostConstruct
+	void init() {
+		log.info("Initialize the SignalWriter");
+
+		// initialize FileWriter object
+		try {
+			fileWriter = new FileWriter(fileName, true);
+
+			// initialize CSVPrinter object
+			csvFilePrinter = Optional.of(new CSVPrinter(fileWriter, csvFileFormat));
+
+			// Create CSV file header
+			csvFilePrinter.get().printRecord(FILE_HEADER);
+
+		} catch (IOException e) {
+			log.error("Unable to create file [{}], due to {}", fileName, e.getCause().getMessage());
+		}
+
+	}
+
+	@Async
+	public void write(Measurement m) {
+		if (csvFilePrinter.isPresent()) {
+			List r = new ArrayList();
+
+			r.add(String.valueOf(m.getTimeTick()));
+			r.add(String.valueOf(m.getValue()));
+
 			try {
-				fileWriter = new FileWriter(fileName, true);
-				
-				//initialize CSVPrinter object 
-		        csvFilePrinter = Optional.of(new CSVPrinter(fileWriter, csvFileFormat));
-		        
-		        //Create CSV file header
-		        csvFilePrinter.get().printRecord(FILE_HEADER);
-		        
+				csvFilePrinter.get().printRecord(r);
 			} catch (IOException e) {
-				log.error("Unable to create file [{}], due to {}", fileName, e.getCause().getMessage());
+				log.warn("Unable to write to csv file");
 			}
+		}
+	}
 
-		}
-		
-		@Async
-		public void write(Measurement m) {
-			if (csvFilePrinter.isPresent()) {
-				List r = new ArrayList();
-	            
-				r.add(String.valueOf(m.getTimeTick()));
-	            r.add(String.valueOf(m.getValue()));
-	            
-	            try {
-					csvFilePrinter.get().printRecord(r);
-				} catch (IOException e) {
-					log.warn("Unable to write to csv file");
-				}
+	@PreDestroy
+	void done() {
+		// if (csvFilePrinter.isPresent()) {
+		// csvFilePrinter.
+		if (fileWriter != null) {
+			try {
+				fileWriter.close();
+			} catch (IOException e) {
+				log.error("Unable to close writer");
 			}
 		}
-		
-		@PreDestroy
-		void done() {
-//			if (csvFilePrinter.isPresent()) {
-//				csvFilePrinter.
-			if (fileWriter != null) {
-				try {
-					fileWriter.close();
-				} catch (IOException e) {
-					log.error("Unable to close writer");
-				}
-			}
-			
-		}
-	
+
+	}
+
 }

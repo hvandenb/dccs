@@ -2,6 +2,7 @@ package org.mines.cs565.dccs.generator;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
@@ -17,9 +18,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.scheduling.support.PeriodicTrigger;
 import org.springframework.stereotype.Service;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.util.concurrent.AbstractScheduledService;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -27,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class SignalGenerator {
+public class SignalGenerator  {
 
 
 	private AudioFormat format;
@@ -38,13 +42,11 @@ public class SignalGenerator {
 	@Autowired
 	private SignalProperties properties;
 	
-	@Autowired
-	private SignalWriter writer;
-	
     /// Time the signal generator was started
     private long startTime;
     private final Stopwatch stopwatch = Stopwatch.createUnstarted();
 
+   
     /// Ticks per second on this CPU
 //    private long ticksPerSecond = Stopwatch.Frequency;
 	
@@ -55,28 +57,20 @@ public class SignalGenerator {
 
 	@PostConstruct
 	void init() {
-		log.info("Initialize the signal generator");
-		packageSize = (int)(((float)properties.getBufferDuration() / 1000) * properties.getSamplingRate() * properties.getSampleSize()) * 2;
-	
-//		try {
-//			format = createAudioFormat();
-//			DataLine.Info info = new DataLine.Info(SourceDataLine.class, format, sinePackageSize);
-//
-//			if (!AudioSystem.isLineSupported(info))
-//				throw new LineUnavailableException();
-//
-//            line = (SourceDataLine)AudioSystem.getLine(info);
-//            line.open(format);  
-//            line.start();	
-//		
-//		}
-//		catch (LineUnavailableException e) {
-//			log.warn("Line of that type is not available: [{}]", e.getCause().getMessage());
-//		}
+//		ThreadPoolTaskScheduler scheduler = (ThreadPoolTaskScheduler) appContext.getBean("scheduler");
+
+		// Create a scheduled trigger that fires based on the samplingRate of the generator.
+		// We're doing a conversion of cycles per second to miliseconds. Note that this might get rounded
+		// due to the trigger only being able to represent whole numbers
+//		generatorTrigger = new PeriodicTrigger( (long) (1000 / properties.getSamplingRate()),TimeUnit.MILLISECONDS); 
+//		generatorTrigger.setFixedRate(true);
+//		generatorTrigger.setInitialDelay(1000L);
+//		ScheduledFuture<Object> scedulefuture= scheduler.schedule(taskObject, generatorTrigger );
+
 		
-	
-		log.info("Requested buffer size = " + packageSize);            
-//	    log.info("Actual line buffer size = " + line.getBufferSize());
+		log.info("Initialize the Signal Generator");
+//		packageSize = (int)(((float)properties.getBufferDuration() / 1000) * properties.getSamplingRate() * properties.getSampleSize()) * 2;
+		
 		
 	    // Start the thread
 //	    this.run();
@@ -93,7 +87,7 @@ public class SignalGenerator {
 		 line.drain();
          line.close();
 		}
-		stopwatch.start();
+		stopwatch.stop();
 	}
 	
 	public void exit() {
@@ -138,7 +132,7 @@ public class SignalGenerator {
      * @param time
      * @return
      */
-    private float getSample(float time) {
+    public float getSample(float time) {
         float value = 0f;
         float t = properties.getFrequency() * time + properties.getPhase();
     	
@@ -167,11 +161,20 @@ public class SignalGenerator {
     	return value;
     }    
     
+    /**
+     * Provides the current elapsed time
+     * @return elasped time
+     * 
+     */
+    public float getTime()
+    {
+    	return (float)(stopwatch.elapsed(TimeUnit.NANOSECONDS));
+    }
     
     public float getValue()
     {
-        float time = (float)(stopwatch.elapsed(TimeUnit.NANOSECONDS));
-//                        / ticksPerSecond;
+        float time = this.getTime();
+
         return getSample(time);
     }
     /**
@@ -203,39 +206,16 @@ public class SignalGenerator {
     	stopwatch.reset();
     }
     
+    
 //	@Async
 	public void run() {
-		log.info("Running the Generator");
+		log.info("Running the Signal Generator");
 		
 		// Restart the stop watch
 		stopwatch.reset();
 		stopwatch.start();
-		
-//		ByteBuffer signalBuffer = null;
-		
-//		// Keep running..
-//		while(exitThread==false) {
-//			double cylce = properties.getFrequency() / properties.getSamplingRate();   //Fraction of cycle between samples
-//
-//			signalBuffer.clear();                             //Toss out samples from previous pass
-//			signalBuffer = getSamples();
-//			
-//            // Write sine samples to the line buffer
-//            // If the audio buffer is full, this would block until there is enough room,
-//            // but we are not writing unless we know there is enough space.
-////            line.write(signalBuffer.array(), 0, signalBuffer.position());    
-//            log.info("Created signal buffer of size [{}]", signalBuffer.position());
-//
-//            // Wait here until there are less than SINE_PACKET_SIZE samples in the buffer
-//            // (Buffer size is 2*SINE_PACKET_SIZE at least, so there will be room for 
-//            // at least SINE_PACKET_SIZE samples when this is true)
-//            try {
-//               while (getLineSampleCount() > packageSize) 
-//                  Thread.sleep(1);                          // Give the system some time to run
-//            }
-//            catch (InterruptedException e) {                // We don't care about this
-//            }
-//		}
-//		
+				
 	}
+
+
 }

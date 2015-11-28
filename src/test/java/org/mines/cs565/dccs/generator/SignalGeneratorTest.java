@@ -35,6 +35,8 @@ public class SignalGeneratorTest {
 	 */
 	@Before
 	public void setUp() throws Exception {
+		generator.reset();
+		generator.run();
 	}
 
 	/**
@@ -46,8 +48,7 @@ public class SignalGeneratorTest {
 
 	@Test
 	public void test() {
-		generator.reset();
-		generator.run();
+
 		
 		fail("Not yet implemented---> " + generator.getValue());
 	}

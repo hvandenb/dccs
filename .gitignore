@@ -37,3 +37,4 @@ overridedb.*
 .DS_Store
 .factorypath
 /.apt_generated/
+/wave.csv

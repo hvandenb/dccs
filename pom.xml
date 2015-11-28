@@ -208,4 +208,11 @@
 			</resource>
 		</resources>
 	</build>
+	<issueManagement>
+		<url>https://github.com/hvandenb/dccs/issues</url>
+		<system>Github</system>
+	</issueManagement>
+	<scm>
+		<url>https://github.com/hvandenb/dccs.git</url>
+	</scm>
 </project>
