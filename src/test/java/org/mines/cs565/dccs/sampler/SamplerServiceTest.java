@@ -9,7 +9,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.mines.cs565.dccs.AppConfig;
 import org.mines.cs565.dccs.DCCSApplication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.SpringApplicationConfiguration;
@@ -21,6 +23,7 @@ import org.springframework.boot.test.WebIntegrationTest;
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(classes = DCCSApplication.class)
+@ContextConfiguration(classes=AppConfig.class )
 @WebIntegrationTest(randomPort = true)
 public class SamplerServiceTest {
 

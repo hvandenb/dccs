@@ -8,6 +8,8 @@ import javax.annotation.PreDestroy;
 import org.mines.cs565.dccs.sampler.Measurement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.metrics.CounterService;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import com.google.common.util.concurrent.AbstractScheduledService;
@@ -19,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author Henri van den Bulk
  *
  */
-@Service
+@Component
 @Slf4j
 public class GeneratorService extends AbstractScheduledService{
 
@@ -28,14 +30,14 @@ public class GeneratorService extends AbstractScheduledService{
 	@Autowired
 	private SignalGenerator generator;
 	
-	
 	@Autowired
 	private SignalWriter writer;
 	
 	@PostConstruct
 	void init() {
 		log.info("Initialize the Signal Generator Service");
-
+		// Reset our actuators
+		
 		generator.run();
 		try {
 //			this.startUp();
@@ -62,9 +64,11 @@ public class GeneratorService extends AbstractScheduledService{
 	 * @return
 	 */
 	public Measurement<Double> sample() {
+
 		float time = generator.getTime();
 		double value = generator.getSample(time);
 		return new Measurement<Double>((long) time, GeneratorConstants.MEASUREMENT_NAME, value);
+		
 	}
 		
     /**
@@ -74,11 +78,17 @@ public class GeneratorService extends AbstractScheduledService{
 	protected void runOneIteration() throws Exception {
 		// TODO Auto-generated method stub
 		log.debug("Timer event on {}", this.getClass().getName());
+
+		this.sampleAndPersist();
+	}
+	
+	private void sampleAndPersist() {
 		
-		float time = generator.getTime();
-		float value = generator.getSample(time);
-		writer.write(this.sample());
-		
+	float time = generator.getTime();
+	float value = generator.getSample(time);
+	writer.write(this.sample());
+	
+	
 	}
 
 

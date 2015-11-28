@@ -19,5 +19,7 @@ public class GeneratorConstants {
 	public static final String DEFAULT_OUTPUT_FILENAME ="wave.csv";
 	public static final boolean DEFAULT_ENABLE_OUTPUT = false;
 	public static final String MEASUREMENT_NAME = "wave.guage";
+	public static final String PERSISTED_SAMPLE_COUNTER_NAME = "generator.samples.persisted";
+	public static final String SAMPLE_REQUEST_COUNTER_NAME = "generator.samples.requested";
 
 }

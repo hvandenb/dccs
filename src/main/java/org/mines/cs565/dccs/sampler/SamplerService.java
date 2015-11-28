@@ -5,8 +5,10 @@ package org.mines.cs565.dccs.sampler;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.metrics.CounterService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import com.google.common.util.concurrent.AbstractScheduledService;
@@ -31,7 +33,7 @@ import org.slf4j.Logger;
  * @author hvandenb
  *
  */
-@Service
+@Component
 @Slf4j
 public class SamplerService extends AbstractScheduledService {
 	
@@ -43,7 +45,12 @@ public class SamplerService extends AbstractScheduledService {
 	@Autowired
     private Sampler sampler;
 	
-    
+	@Autowired
+	private CounterService samplerCounter;
+  
+	private List<Boolean> timingVector = new ArrayList<Boolean>();
+	private int sampleIndex = 0;
+	
 	/**
 	 * Calculate the sampling interval based on a frequency in Hz. 
 	 * Using the formula T = 1 / f 
@@ -51,7 +58,7 @@ public class SamplerService extends AbstractScheduledService {
 	 */
 	public long calculateSamplingInterval(float frequency) {
 		long T=0;
-		T= (long) (properties.getMultipliier() * (1 / frequency) * 1000);
+		T= (long) (properties.getMultiplier() * (1 / frequency) * 1000);
 		
 		return T;
 	}
@@ -83,27 +90,29 @@ public class SamplerService extends AbstractScheduledService {
 		
 	}
 	
-	/**
-	 * This changes the scheduler's sampling
-	 * @param rate
-	 */
-	public void changeSchedule(long rate) {
-		this.samplingRate = rate;
-//		threadPoolTaskScheduler.scheduleWithFixedDelay(sampler, samplingRate); // schedule in ms
-	
-	}
 
 	@PostConstruct
 	void init() {
 
 		log.info("Initialize the Sampler");
 		
-//		threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
-//	    threadPoolTaskScheduler.setThreadNamePrefix("SamplerJob");
-//	    threadPoolTaskScheduler.initialize();
-	    
 	    samplingRate = calculateSamplingInterval(properties.getFrequency());
-//	    changeSchedule(samplingRate);
+	    
+		// Reset our actuators
+		samplerCounter.reset(SamplerConstants.INVOCATIONS_COUNTER);
+		samplerCounter.reset(SamplerConstants.SAMPLES_COUNTER);
+		
+		// Ensure we have a timing vector
+		if (timingVector != null)
+			timingVector.clear();
+		timingVector = new ArrayList<Boolean>();
+		
+		
+//		timingVector = generateTimingVector()
+		
+		// Start the scheduler
+		startAsync();	
+	    
 	}
 	/**
 	 * Close things down before the object gets destroyed.
@@ -113,14 +122,43 @@ public class SamplerService extends AbstractScheduledService {
 		log.info("Stopping the sampler");
 		
 		stopAsync();
-		
-//	    ScheduledExecutorService scheduledExecutorService = threadPoolTaskScheduler.getScheduledExecutor();
-//	    scheduledExecutorService.shutdown();
 	}
 
+	/**
+	 * This gets called on the specific scheduler
+	 */
 	@Override
 	protected void runOneIteration() throws Exception {
-		// TODO Auto-generated method stub
+	
+		log.debug("Invoking the Sampler");
+
+		samplerCounter.increment(SamplerConstants.INVOCATIONS_COUNTER);
+		
+		if (timingVector.size() > 0) {
+			sampleIndex++;
+			
+			// Reset the index when we've reached the end
+			if (sampleIndex > timingVector.size())
+				sampleIndex = 1;
+			
+	
+			// Only when the vector tells us to sample we'll sample
+			if (timingVector.get(sampleIndex-1).booleanValue()) {
+				samplerCounter.increment(SamplerConstants.SAMPLES_COUNTER);
+
+				// Get a sample from our sampler
+				Measurement<Double> m = sampler.sample();
+
+//				if (queue != null) {
+//					//queue.add("");
+//				}
+				
+			}
+		}
+		else {
+			log.warn("The timing vector is empty, so we'll skip the sampling");
+		}
+		
 		
 	}
 

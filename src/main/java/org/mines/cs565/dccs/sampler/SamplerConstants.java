@@ -12,6 +12,7 @@ public class SamplerConstants {
 	public static final float DEFAULT_FREQUENCY = 500;
 	public static final int DEFAULT_TIMING_VECTOR_SIZE = 20; 
 	
-
+	public static final String INVOCATIONS_COUNTER = "sampler.invocations";
+	public static final String SAMPLES_COUNTER = "sampler.samples";
 	
 }
