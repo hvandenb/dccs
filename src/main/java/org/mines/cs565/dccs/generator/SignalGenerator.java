@@ -166,9 +166,9 @@ public class SignalGenerator  {
      * @return elasped time
      * 
      */
-    public float getTime()
+    public long getTime()
     {
-    	return (float)(stopwatch.elapsed(TimeUnit.NANOSECONDS));
+    	return (stopwatch.elapsed(TimeUnit.NANOSECONDS));
     }
     
     public float getValue()

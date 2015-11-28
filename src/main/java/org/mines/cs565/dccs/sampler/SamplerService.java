@@ -9,6 +9,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
 
+import com.google.common.util.concurrent.AbstractScheduledService;
+import com.google.common.util.concurrent.AbstractScheduledService.Scheduler;
+
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -16,6 +19,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -29,19 +33,16 @@ import org.slf4j.Logger;
  */
 @Service
 @Slf4j
-public class SamplerService {
+public class SamplerService extends AbstractScheduledService {
 	
-	@Value("${sampler.frequency}")
-	private float sourceFrequency = 0;
 	private long samplingRate = 0;
     
-	@Value("${sampler.multiplier}")
-	private int multiplier = SamplerConstants.DEFAULT_MULTIPLIER;
-	
-    ThreadPoolTaskScheduler threadPoolTaskScheduler;
-        
 	@Autowired
-    Sampler sampler;
+	private SamplerProperties properties;
+	
+	@Autowired
+    private Sampler sampler;
+	
     
 	/**
 	 * Calculate the sampling interval based on a frequency in Hz. 
@@ -50,7 +51,7 @@ public class SamplerService {
 	 */
 	public long calculateSamplingInterval(float frequency) {
 		long T=0;
-		T= (long) (multiplier * (1 / frequency) * 1000);
+		T= (long) (properties.getMultipliier() * (1 / frequency) * 1000);
 		
 		return T;
 	}
@@ -88,7 +89,7 @@ public class SamplerService {
 	 */
 	public void changeSchedule(long rate) {
 		this.samplingRate = rate;
-		threadPoolTaskScheduler.scheduleWithFixedDelay(sampler, samplingRate); // schedule in ms
+//		threadPoolTaskScheduler.scheduleWithFixedDelay(sampler, samplingRate); // schedule in ms
 	
 	}
 
@@ -97,11 +98,11 @@ public class SamplerService {
 
 		log.info("Initialize the Sampler");
 		
-		threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
-	    threadPoolTaskScheduler.setThreadNamePrefix("SamplerJob");
-	    threadPoolTaskScheduler.initialize();
+//		threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
+//	    threadPoolTaskScheduler.setThreadNamePrefix("SamplerJob");
+//	    threadPoolTaskScheduler.initialize();
 	    
-	    samplingRate = calculateSamplingInterval(this.sourceFrequency);
+	    samplingRate = calculateSamplingInterval(properties.getFrequency());
 //	    changeSchedule(samplingRate);
 	}
 	/**
@@ -110,8 +111,23 @@ public class SamplerService {
 	@PreDestroy
 	public void stop() {
 		log.info("Stopping the sampler");
-	    ScheduledExecutorService scheduledExecutorService = threadPoolTaskScheduler.getScheduledExecutor();
-	    scheduledExecutorService.shutdown();
+		
+		stopAsync();
+		
+//	    ScheduledExecutorService scheduledExecutorService = threadPoolTaskScheduler.getScheduledExecutor();
+//	    scheduledExecutorService.shutdown();
+	}
+
+	@Override
+	protected void runOneIteration() throws Exception {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected Scheduler scheduler() {
+		log.debug("Creating a fixed scheduler");
+		return Scheduler.newFixedRateSchedule(0, samplingRate, TimeUnit.MILLISECONDS);
 	}
 	
 }

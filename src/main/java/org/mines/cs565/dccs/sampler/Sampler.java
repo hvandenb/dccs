@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import javax.annotation.PostConstruct;
 
 import org.mines.cs565.dccs.cluster.ClusterManager;
+import org.mines.cs565.dccs.generator.GeneratorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.metrics.CounterService;
@@ -19,18 +20,19 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Sampler implements Runnable {
 	
-	@Value("${sampler.timingVectorSize}")
-	private int timingVectorSize = 0;
 	private List<Boolean> timingVector = new ArrayList<Boolean>();
 	private int sampleIndex = 0;
 	
 	@Autowired
 	private CounterService samplerCounter;
 	
-	private CompletableFuture<DistributedQueue<String>> queue;
+	@Autowired
+	private SamplerProperties properties;
 	
-	@Value("${sampler.queueName}")
-	private String queueName = SamplerConstants.DEFAULT_MEASUREMENT_QUEUE;
+	@Autowired
+	private GeneratorService generator;
+	
+	private CompletableFuture<DistributedQueue<String>> queue;
 	
 	@Autowired
 	ClusterManager cm=null;
@@ -67,6 +69,18 @@ public class Sampler implements Runnable {
 		
 	}
 	
+	/**
+	 * This grabs a sample from the the current sampling source.
+	 * @return
+	 */
+	public Measurement<Double> sample() {
+		
+		
+		
+		return null;
+		
+	}
+	
 	@PostConstruct
 	void init() {
 
@@ -80,14 +94,14 @@ public class Sampler implements Runnable {
 		samplerCounter.reset("sampler.counter.samples");
 		
 		// Let's create the distributed queue
-		queue = cm.createQueue(queueName);
+		queue = cm.createQueue(properties.getQueueName());
 		if (queue != null) {
 			queue.thenAccept(queue -> {
 				log.info("Queue was created");
 			});
 		}
 		else
-			log.error("Unable to create the queue: [{}]", queueName);
+			log.error("Unable to create the queue: [{}]", properties.getQueueName());
 	}
 
 }

@@ -8,7 +8,9 @@ public class SamplerConstants {
 	/**
 	 * Indicates the multiplier of the sampling time, e.g. T=multiplier * (1/f)
 	 */
-	public static final int DEFAULT_MULTIPLIER = 1; 
+	public static final int DEFAULT_MULTIPLIER = 1;
+	public static final float DEFAULT_FREQUENCY = 500;
+	public static final int DEFAULT_TIMING_VECTOR_SIZE = 20; 
 	
 
 	

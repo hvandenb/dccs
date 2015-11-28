@@ -56,6 +56,16 @@ public class GeneratorService extends AbstractScheduledService{
 	public void done() {
 		log.info("Stopping the Generator Service");
 	}	
+	
+	/**
+	 * Returns a sample of the generator
+	 * @return
+	 */
+	public Measurement<Double> sample() {
+		float time = generator.getTime();
+		double value = generator.getSample(time);
+		return new Measurement<Double>((long) time, GeneratorConstants.MEASUREMENT_NAME, value);
+	}
 		
     /**
      * This method writes out a single sample of the generator to the file 
@@ -67,7 +77,7 @@ public class GeneratorService extends AbstractScheduledService{
 		
 		float time = generator.getTime();
 		float value = generator.getSample(time);
-		writer.write(new Measurement((long) time, value));
+		writer.write(this.sample());
 		
 	}
 
