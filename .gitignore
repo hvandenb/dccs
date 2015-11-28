@@ -36,3 +36,4 @@ overridedb.*
 *.jar
 .DS_Store
 .factorypath
+/.apt_generated/
