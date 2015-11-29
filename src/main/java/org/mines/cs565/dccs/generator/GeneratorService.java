@@ -47,9 +47,8 @@ public class GeneratorService extends AbstractScheduledService{
 				startAsync();			
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			log.error(e.getLocalizedMessage());
-		} //
+		} 
 	}
 	
 	/**

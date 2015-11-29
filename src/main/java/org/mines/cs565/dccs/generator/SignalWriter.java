@@ -3,7 +3,6 @@
  */
 package org.mines.cs565.dccs.generator;
 
-import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,7 +14,7 @@ import javax.annotation.PreDestroy;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.mines.cs565.dccs.sampler.Measurement;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -36,13 +35,14 @@ public class SignalWriter {
 	// CSV file header
 	private static final Object[] FILE_HEADER = { "timestamp", "value" };
 
-	FileWriter fileWriter = null;
+	Optional<FileWriter> fileWriter = null;
 	Optional<CSVPrinter> csvFilePrinter = null;
 	// Create the CSVFormat object with "\n" as a record delimiter
 	CSVFormat csvFileFormat = CSVFormat.DEFAULT.withRecordSeparator(NEW_LINE_SEPARATOR);
 
-	@Value("${generator.outputFileName}")
-	private String fileName;
+
+	@Autowired
+	private SignalProperties properties;
 
 	@PostConstruct
 	void init() {
@@ -50,24 +50,28 @@ public class SignalWriter {
 
 		// initialize FileWriter object
 		try {
-			fileWriter = new FileWriter(fileName, true);
+			fileWriter = Optional.of(new FileWriter(properties.getOutputFileName(), true));
 
 			// initialize CSVPrinter object
-			csvFilePrinter = Optional.of(new CSVPrinter(fileWriter, csvFileFormat));
+			csvFilePrinter = Optional.of(new CSVPrinter(fileWriter.get(), csvFileFormat));
 
 			// Create CSV file header
 			csvFilePrinter.get().printRecord(FILE_HEADER);
 
 		} catch (IOException e) {
-			log.error("Unable to create file [{}], due to {}", fileName, e.getCause().getMessage());
+			log.error("Unable to create file [{}], due to {}", properties.getOutputFileName(), e.getCause().getMessage());
 		}
 
 	}
 
+	/**
+	 * Write out a single measurement to the output file
+	 * @param m
+	 */
 	@Async
-	public void write(Measurement m) {
+	public void write(Measurement<?> m) {
 		if (csvFilePrinter.isPresent()) {
-			List r = new ArrayList();
+			List<String> r = new ArrayList<String>();
 
 			r.add(String.valueOf(m.getTimeTick()));
 			r.add(String.valueOf(m.getValue()));
@@ -80,13 +84,16 @@ public class SignalWriter {
 		}
 	}
 
+	/**
+	 * Close out anything that might be considered open
+	 */
 	@PreDestroy
 	void done() {
 		// if (csvFilePrinter.isPresent()) {
 		// csvFilePrinter.
-		if (fileWriter != null) {
+		if (fileWriter.isPresent()) {
 			try {
-				fileWriter.close();
+				fileWriter.get().close();
 			} catch (IOException e) {
 				log.error("Unable to close writer");
 			}

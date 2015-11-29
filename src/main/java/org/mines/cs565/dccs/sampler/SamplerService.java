@@ -100,7 +100,7 @@ public class SamplerService extends AbstractScheduledService {
 	@PostConstruct
 	void init() {
 
-		log.info("Initialize the Sampler");
+		log.info("Initialize the Sampler Service");
 		
 	    samplingRate = calculateSamplingInterval(properties.getFrequency());
 	    		

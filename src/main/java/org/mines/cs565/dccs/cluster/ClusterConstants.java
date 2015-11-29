@@ -7,6 +7,6 @@ public class ClusterConstants {
 	public static final int DEFAULT_PORT= 55555;
 	public static final String DEFAULT_DELIMITER = ",";
 	public static final String DEFAULT_NAME = "dccs";
-	public static final String DEFAULT_LOG_DIRECTORY = "/logs";
+	public static final String DEFAULT_LOG_DIRECTORY = "/logs/";
 	
 }

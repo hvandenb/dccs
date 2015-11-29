@@ -53,7 +53,7 @@ public class SignalGeneratorTest {
 	public void test() {
 
 		
-		fail("Not yet implemented---> " + generator.getValue());
+//		fail("Not yet implemented---> " + generator.getValue());
 	}
 
 }
