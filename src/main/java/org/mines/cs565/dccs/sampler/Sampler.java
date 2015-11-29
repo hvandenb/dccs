@@ -30,7 +30,7 @@ public class Sampler  {
 	@Autowired
 	private SamplerProperties properties;
 	
-	@Autowired
+//	@Autowired
 	private GeneratorService measureSource;
 	
 	private CompletableFuture<DistributedQueue<String>> queue;
@@ -53,7 +53,8 @@ public class Sampler  {
 
 		log.info("Initialize the Sampler");
 
-
+		measureSource = new GeneratorService();
+		
 				// Let's create the distributed queue
 		queue = cm.createQueue(properties.getQueueName());
 		if (queue != null) {

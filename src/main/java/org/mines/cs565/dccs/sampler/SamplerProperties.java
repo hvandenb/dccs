@@ -22,7 +22,7 @@ public class SamplerProperties {
 	private int timingVectorSize = SamplerConstants.DEFAULT_TIMING_VECTOR_SIZE;
 	private String queueName = SamplerConstants.DEFAULT_MEASUREMENT_QUEUE;
 	private int multiplier = SamplerConstants.DEFAULT_MULTIPLIER;
-	
+	private int bufferSize = SamplerConstants.DEFAULT_BUFFER_SIZE;
 	
 	
 }

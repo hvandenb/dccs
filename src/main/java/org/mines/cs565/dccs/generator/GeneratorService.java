@@ -27,6 +27,7 @@ public class GeneratorService extends AbstractScheduledService{
 
 	@Autowired
 	private SignalProperties properties;
+
 	@Autowired
 	private SignalGenerator generator;
 	

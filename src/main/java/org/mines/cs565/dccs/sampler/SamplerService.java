@@ -11,6 +11,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.AbstractScheduledService;
 import com.google.common.util.concurrent.AbstractScheduledService.Scheduler;
 
@@ -44,12 +45,11 @@ public class SamplerService extends AbstractScheduledService {
 	
 	@Autowired
     private Sampler sampler;
-	
-	@Autowired
-	private CounterService samplerCounter;
-  
+	  
 	private List<Boolean> timingVector = new ArrayList<Boolean>();
 	private int sampleIndex = 0;
+	
+	List<Measurement<Double>> measurements;
 	
 	/**
 	 * Calculate the sampling interval based on a frequency in Hz. 
@@ -72,17 +72,23 @@ public class SamplerService extends AbstractScheduledService {
 	 * @return a Timing vector, null if m >= n
 	 */
 	public List<Boolean> generateTimingVector(int m, int n, long seed) {
-		List<Boolean> vector = new ArrayList<Boolean>(m);
+		// Create the vector with size of n
+		List<Boolean> vector = Lists.newArrayListWithCapacity(n);
 		
+		log.debug("Creating RTV of size [{}]", n);
 		if (n < m) 
 			return null;
-					
-		for (int i = 0 ; i < m -1; i++) {
-			vector.set(i, new Boolean(true));
+						
+		for (int i = 1; i <= n; i++) {
+			vector.add(new Boolean( i <= (n-m) ? true : false ));
 		}
-		for (int i = m ; i < n -1; i++) {
-			vector.set(i, new Boolean(false));
-		}
+		
+//		for (int i = 1 ; i < m -1; i++) {
+//			vector.add(new Boolean(true));
+//		}
+//		for (int i = m ; i < n -1; i++) {
+//			vector.add(new Boolean(false));
+//		}
 		
 		Collections.shuffle(vector, new Random(seed));
 		
@@ -97,18 +103,18 @@ public class SamplerService extends AbstractScheduledService {
 		log.info("Initialize the Sampler");
 		
 	    samplingRate = calculateSamplingInterval(properties.getFrequency());
-	    
-		// Reset our actuators
-		samplerCounter.reset(SamplerConstants.INVOCATIONS_COUNTER);
-		samplerCounter.reset(SamplerConstants.SAMPLES_COUNTER);
-		
+	    		
 		// Ensure we have a timing vector
 		if (timingVector != null)
 			timingVector.clear();
-		timingVector = new ArrayList<Boolean>();
+//		timingVector = new ArrayList<Boolean>();
 		
+		// Just generate the Timer
+		// TODO: Timing vector needs to be provided by the cluster
+		timingVector = generateTimingVector(properties.getBufferSize(), properties.getBufferSize() * 2, 1234);
 		
-//		timingVector = generateTimingVector()
+		// Initialize a list of measurements, which will be a local buffer
+		measurements = Lists.newArrayListWithCapacity(properties.getBufferSize());
 		
 		// Start the scheduler
 		startAsync();	
@@ -132,8 +138,17 @@ public class SamplerService extends AbstractScheduledService {
 	
 		log.debug("Invoking the Sampler");
 
-		samplerCounter.increment(SamplerConstants.INVOCATIONS_COUNTER);
-		
+		sample();
+
+	}
+	
+	/**
+	 * Take a sample and store it in the local buffer
+	 * @return true if we actually sampled, false if not.
+	 */
+	private boolean sample() {
+		boolean sampled = false;
+				
 		if (timingVector.size() > 0) {
 			sampleIndex++;
 			
@@ -143,12 +158,12 @@ public class SamplerService extends AbstractScheduledService {
 			
 	
 			// Only when the vector tells us to sample we'll sample
-			if (timingVector.get(sampleIndex-1).booleanValue()) {
-				samplerCounter.increment(SamplerConstants.SAMPLES_COUNTER);
-
+			if (timingVector.get(sampleIndex-1).booleanValue() == true) {
 				// Get a sample from our sampler
 				Measurement<Double> m = sampler.sample();
-
+				measurements.add(m);
+				sampled = true;
+				
 //				if (queue != null) {
 //					//queue.add("");
 //				}
@@ -158,13 +173,12 @@ public class SamplerService extends AbstractScheduledService {
 		else {
 			log.warn("The timing vector is empty, so we'll skip the sampling");
 		}
-		
-		
+		return sampled;
 	}
 
 	@Override
 	protected Scheduler scheduler() {
-		log.debug("Creating a fixed scheduler");
+		log.info("Creating a fixed scheduler with a sample rate [{}] ms", samplingRate);
 		return Scheduler.newFixedRateSchedule(0, samplingRate, TimeUnit.MILLISECONDS);
 	}
 	

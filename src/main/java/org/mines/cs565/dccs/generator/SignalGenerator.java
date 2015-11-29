@@ -33,17 +33,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SignalGenerator  {
 
-
-	private AudioFormat format;
 	private SourceDataLine line;
 	private int packageSize = 0;
-	private boolean exitThread = false;
 
 	@Autowired
 	private SignalProperties properties;
 	
     /// Time the signal generator was started
-    private long startTime;
     private final Stopwatch stopwatch = Stopwatch.createUnstarted();
 
    
@@ -57,24 +53,8 @@ public class SignalGenerator  {
 
 	@PostConstruct
 	void init() {
-//		ThreadPoolTaskScheduler scheduler = (ThreadPoolTaskScheduler) appContext.getBean("scheduler");
-
-		// Create a scheduled trigger that fires based on the samplingRate of the generator.
-		// We're doing a conversion of cycles per second to miliseconds. Note that this might get rounded
-		// due to the trigger only being able to represent whole numbers
-//		generatorTrigger = new PeriodicTrigger( (long) (1000 / properties.getSamplingRate()),TimeUnit.MILLISECONDS); 
-//		generatorTrigger.setFixedRate(true);
-//		generatorTrigger.setInitialDelay(1000L);
-//		ScheduledFuture<Object> scedulefuture= scheduler.schedule(taskObject, generatorTrigger );
-
 		
 		log.info("Initialize the Signal Generator");
-//		packageSize = (int)(((float)properties.getBufferDuration() / 1000) * properties.getSamplingRate() * properties.getSampleSize()) * 2;
-		
-		
-	    // Start the thread
-//	    this.run();
-//		this.getSamples();
 	}
 	
 	/**
@@ -91,7 +71,6 @@ public class SignalGenerator  {
 	}
 	
 	public void exit() {
-		exitThread = true;
 	}
 
 	/**
@@ -138,12 +117,10 @@ public class SignalGenerator  {
     	
     	switch (properties.getShape()) {
 		case SAWTOOTH:
-//			value = 2.0 * (cyclePosition - Math.floor(cyclePosition + 0.5));
 			// 2 * ( t/a - floor( t/a + 1/2 ) )
             value = 2f*(t-(float)Math.floor(t+0.5f));
 			break;
 		case SINE: // sin( 2 * pi * t )
-//			value = Math.sin(2*Math.PI * cyclePosition);
 			value = (float)Math.sin(2 * Math.PI * t);
 			break;
 		case SQUARE: 
@@ -188,7 +165,7 @@ public class SignalGenerator  {
 		
 		double cylce = properties.getFrequency() / properties.getSamplingRate();   // Fraction of cycle between samples
 
-		signalBuffer.clear();                             //Toss out samples from previous pass
+		signalBuffer.clear();     //Toss out samples from previous pass
 
         // Generate sinePackageSize samples based on the current cycle from frequency
         for (int i=0; i < packageSize/ properties.getSampleSize(); i++) {
