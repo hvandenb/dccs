@@ -221,7 +221,7 @@ public class ClusterManager {
 
 				performLeaderElection();
 
-				joinGroup(settings.getName());
+//				joinGroup(settings.getName());
 
 				// We keep checking if we still should be running
 				while (isRunning()) {
