@@ -1,2 +1,2 @@
-# dccs
+# DCCS
 Distributed Collaborative Compressive Sampling
