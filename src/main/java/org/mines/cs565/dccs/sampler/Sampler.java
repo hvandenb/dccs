@@ -18,7 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * The Sampler is responsible for collecting samples from it's measurement source
- * @author Henri van den Bulk
+ *
+ * @author <a href="http://github.com/hvandenb">Henri van den Bulk</a>
  *
  */
 @Component

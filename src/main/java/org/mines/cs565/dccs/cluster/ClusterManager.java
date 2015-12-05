@@ -15,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import com.google.code.gossip.GossipMember;
+import com.google.code.gossip.GossipSettings;
+import com.google.code.gossip.RemoteGossipMember;
 import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
@@ -34,6 +37,11 @@ import io.atomix.copycat.server.storage.Storage;
 import io.atomix.copycat.server.storage.StorageLevel;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * 
+ * @author <a href="http://github.com/hvandenb">Henri van den Bulk</a>
+ *
+ */
 @Service
 @Slf4j
 public class ClusterManager {
@@ -46,6 +54,8 @@ public class ClusterManager {
 	private static Optional<Atomix> server = null;
 
 	List<Address> members = new ArrayList<Address>();
+	List<GossipMember> startupMembers = new ArrayList<GossipMember>();
+
 	private Splitter splitter;
 
 	/**
@@ -123,6 +133,18 @@ public class ClusterManager {
 
 		cluster.stopAsync();
 	}
+	
+	/**
+	 * Start the gossip to find all the other members in the cluster.
+	 * TODO: https://github.com/edwardcapriolo/gossip/tree/b18821d41e147589bf70a594bc6937666b65c406
+	 */
+	private void startGossip() {
+		  GossipSettings gossipSettings = new GossipSettings();
+		  int seedNodes = 3;
+		  for (int i = 1; i < seedNodes+1; ++i) {
+		    startupMembers.add(new RemoteGossipMember("127.0.0." + i, 2000, i + ""));
+		  }
+	}
 
 	/**
 	 * Build the server peers from a list of comma separated list of peers.
@@ -142,10 +164,19 @@ public class ClusterManager {
 		}
 	}
 
+	/**
+	 * The Cluster is an internal class that manages the cluster as a background
+	 * Service.
+	 * @author Henri van den Bulk
+	 *
+	 */
 	private class Cluster extends AbstractExecutionThreadService {
 
+		/**
+		 * Starts the Leader Election process.
+		 */
 		private void performLeaderElection() {
-
+			
 			log.info("Starting the Leader Election process");
 			// Create a leader election resource.
 			DistributedLeaderElection election;
@@ -175,6 +206,10 @@ public class ClusterManager {
 			}
 		}
 
+		/**
+		 * Join a named group
+		 * @param name
+		 */
 		private void joinGroup(String name) {
 			try {
 
