@@ -16,4 +16,9 @@ public class SamplerConstants {
 	public static final String SAMPLES_COUNTER = "sampler.samples";
 	public static final int DEFAULT_BUFFER_SIZE = 100;
 	
+	public static final String DEFAULT_OUTPUT_FILENAME ="sample.csv";
+	public static final boolean DEFAULT_ENABLE_OUTPUT = false;
+	public static final String MEASUREMENT_NAME = "wave.guage.sampler";
+	public static final String DEFAULT_VECTOR = "true,true,false";
+
 }

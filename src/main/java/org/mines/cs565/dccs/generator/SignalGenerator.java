@@ -111,7 +111,7 @@ public class SignalGenerator  {
      * @param time
      * @return
      */
-    public float sample(float time) {
+    public double sample(float time) {
         float value = 0f;
         float t = properties.getFrequency() * time + properties.getPhase();
     	
@@ -139,20 +139,20 @@ public class SignalGenerator  {
     }    
     
     /**
-     * Provides the current elapsed time in nanoseconds, e.g. the time from when we started to now
+     * Provides the current elapsed time in milliseconds, e.g. the time from when we started to now
      * @return elasped time
      * 
      */
     public long getElapsedTime()
     {
-    	return (stopwatch.elapsed(TimeUnit.NANOSECONDS));
+    	return (stopwatch.elapsed(TimeUnit.MILLISECONDS));
     }
     
     /**
      * Read a value for the current time
      * @return the value of the current time
      */
-    public float read()
+    public double read()
     {
         float time = this.getElapsedTime();
 

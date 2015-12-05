@@ -45,7 +45,7 @@ public class Sampler  {
 	 */
 	public Measurement<Double> sample() {
 		
-		return measureSource.sample();
+		return measureSource.sample(SamplerConstants.MEASUREMENT_NAME);
 		
 	}
 	

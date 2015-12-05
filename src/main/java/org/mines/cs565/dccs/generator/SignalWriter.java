@@ -19,6 +19,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Strings;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,12 +34,12 @@ public class SignalWriter {
 	// Delimiter used in CSV file
 	private static final String NEW_LINE_SEPARATOR = "\n";
 	// CSV file header
-	private static final Object[] FILE_HEADER = { "timestamp", "value" };
+	private static final Object[] FILE_HEADER = { "timestamp", "measurement", "value" };
 
 	Optional<FileWriter> fileWriter = null;
 	Optional<CSVPrinter> csvFilePrinter = null;
 	// Create the CSVFormat object with "\n" as a record delimiter
-	CSVFormat csvFileFormat = CSVFormat.DEFAULT.withRecordSeparator(NEW_LINE_SEPARATOR);
+	CSVFormat csvFileFormat = CSVFormat.DEFAULT.withRecordSeparator(NEW_LINE_SEPARATOR).withDelimiter(',');
 
 
 	@Autowired
@@ -50,7 +51,7 @@ public class SignalWriter {
 
 		// initialize FileWriter object
 		try {
-			fileWriter = Optional.of(new FileWriter(properties.getOutputFileName(), true));
+			fileWriter = Optional.of(new FileWriter(properties.getOutputFileName(), false)); // do not append
 
 			// initialize CSVPrinter object
 			csvFilePrinter = Optional.of(new CSVPrinter(fileWriter.get(), csvFileFormat));
@@ -68,12 +69,13 @@ public class SignalWriter {
 	 * Write out a single measurement to the output file
 	 * @param m
 	 */
-	@Async
+//	@Async
 	public void write(Measurement<?> m) {
-		if (csvFilePrinter.isPresent()) {
+		if (csvFilePrinter.isPresent() && m != null) {
 			List<String> r = new ArrayList<String>();
 
 			r.add(String.valueOf(m.getTimeTick()));
+			r.add(Strings.nullToEmpty(m.getName()));
 			r.add(String.valueOf(m.getValue()));
 
 			try {
@@ -93,9 +95,11 @@ public class SignalWriter {
 		// csvFilePrinter.
 		if (fileWriter.isPresent()) {
 			try {
+				fileWriter.get().flush();
 				fileWriter.get().close();
+				csvFilePrinter.get().close();
 			} catch (IOException e) {
-				log.error("Unable to close writer");
+				log.error("Unable to flush/close writer");
 			}
 		}
 

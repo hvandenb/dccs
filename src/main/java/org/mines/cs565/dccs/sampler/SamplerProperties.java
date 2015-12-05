@@ -3,6 +3,7 @@
  */
 package org.mines.cs565.dccs.sampler;
 
+import org.mines.cs565.dccs.generator.GeneratorConstants;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +24,9 @@ public class SamplerProperties {
 	private String queueName = SamplerConstants.DEFAULT_MEASUREMENT_QUEUE;
 	private int multiplier = SamplerConstants.DEFAULT_MULTIPLIER;
 	private int bufferSize = SamplerConstants.DEFAULT_BUFFER_SIZE;
-	
+
+	private boolean enableOutput = SamplerConstants.DEFAULT_ENABLE_OUTPUT;
+
+	private String vector = SamplerConstants.DEFAULT_VECTOR;
 	
 }

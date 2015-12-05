@@ -28,6 +28,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 
+import org.mines.cs565.dccs.generator.SignalWriter;
 import org.slf4j.Logger;
 
 /**
@@ -45,6 +46,9 @@ public class SamplerService extends AbstractScheduledService {
 	
 	@Autowired
     private Sampler sampler;
+	
+	@Autowired
+	private SignalWriter writer;
 	  
 	private List<Boolean> timingVector = new ArrayList<Boolean>();
 	private int sampleIndex = 0;
@@ -162,6 +166,10 @@ public class SamplerService extends AbstractScheduledService {
 				// Get a sample from our sampler
 				Measurement<Double> m = sampler.sample();
 				measurements.add(m);
+
+				if (properties.isEnableOutput())
+					writer.write(m);
+				
 				sampled = true;
 				
 //				if (queue != null) {

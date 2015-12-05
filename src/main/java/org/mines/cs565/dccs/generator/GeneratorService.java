@@ -19,66 +19,66 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * The Generator Service is a wrapper to the actual {@link SignalGenerator}
+ * 
  * @author Henri van den Bulk
  *
  */
 @Component
 @Slf4j
-public class GeneratorService extends AbstractScheduledService{
+public class GeneratorService extends AbstractScheduledService {
 
 	@Autowired
 	private SignalProperties properties;
 
 	@Autowired
 	private SignalGenerator generator;
-	
+
 	@Autowired
 	private SignalWriter writer;
-	
-	// Nice to have a ticker
-	private Ticker ticker = Ticker.systemTicker();
-	
+
 	@PostConstruct
 	void init() {
 		log.info("Initialize the Signal Generator Service");
 		// Reset our actuators
-		
+
 		generator.run();
 		try {
-//			this.startUp();
+			// this.startUp();
 			// Only start up the output when it's enable
 			if (properties.isEnableOutput()) {
-				startAsync();			
+				startAsync();
 			}
 		} catch (Exception e) {
 			log.error(e.getLocalizedMessage());
-		} 
+		}
 	}
-	
+
 	/**
 	 * Close things down before the object gets destroyed.
 	 */
 	@PreDestroy
 	public void done() {
 		log.info("Stopping the Generator Service");
-	}	
-	
+	}
+
 	/**
 	 * Returns a sample of the generator
+	 * 
 	 * @return
 	 */
-	public Measurement<Double> sample() {
+	public Measurement<Double> sample(String name) {
 
-		long time = ticker.read();
-		float elaspsedTime = generator.getElapsedTime();
-		double value = generator.sample(elaspsedTime);
+//		long time = ticker.read();
+		long time = System.currentTimeMillis();
+		long elaspsedTime = generator.getElapsedTime();
+		Double value = Double.valueOf(generator.sample(elaspsedTime));
 		return new Measurement<Double>(time, GeneratorConstants.MEASUREMENT_NAME, value);
-		
+
 	}
-		
-    /**
-     * This method writes out a single sample of the generator to the file 
-     */
+
+	/**
+	 * This method writes out a single sample of the generator to the file
+	 */
 	@Override
 	protected void runOneIteration() throws Exception {
 		// TODO Auto-generated method stub
@@ -86,16 +86,12 @@ public class GeneratorService extends AbstractScheduledService{
 
 		this.sampleAndPersist();
 	}
-	
-	private void sampleAndPersist() {
-		
-	float time = generator.getTime();
-	float value = generator.sample(time);
-	writer.write(this.sample());
-	
-	
-	}
 
+	private void sampleAndPersist() {
+
+		writer.write(this.sample(GeneratorConstants.MEASUREMENT_NAME));
+
+	}
 
 	/**
 	 * Initiate the scheduler based on the sampling Rate
