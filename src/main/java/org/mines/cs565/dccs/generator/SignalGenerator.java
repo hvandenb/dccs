@@ -86,7 +86,7 @@ public class SignalGenerator  {
      * @param cyclePosition
      * @return
      */
-    private double getSample(double cyclePosition) {
+    private double sample(double cyclePosition) {
     	double value = 0;
     	
     	switch (properties.getShape()) {
@@ -111,7 +111,7 @@ public class SignalGenerator  {
      * @param time
      * @return
      */
-    public float getSample(float time) {
+    public float sample(float time) {
         float value = 0f;
         float t = properties.getFrequency() * time + properties.getPhase();
     	
@@ -121,7 +121,7 @@ public class SignalGenerator  {
             value = 2f*(t-(float)Math.floor(t+0.5f));
 			break;
 		case SINE: // sin( 2 * pi * t )
-			value = (float)Math.sin(2 * Math.PI * t);
+			value = (float)Math.sin(2 * Math.PI * t) * properties.getAmplitude();
 			break;
 		case SQUARE: 
 			value = (float) Math.signum(Math.sin(2f * Math.PI * t));
@@ -139,20 +139,24 @@ public class SignalGenerator  {
     }    
     
     /**
-     * Provides the current elapsed time
+     * Provides the current elapsed time in nanoseconds, e.g. the time from when we started to now
      * @return elasped time
      * 
      */
-    public long getTime()
+    public long getElapsedTime()
     {
     	return (stopwatch.elapsed(TimeUnit.NANOSECONDS));
     }
     
-    public float getValue()
+    /**
+     * Read a value for the current time
+     * @return the value of the current time
+     */
+    public float read()
     {
-        float time = this.getTime();
+        float time = this.getElapsedTime();
 
-        return getSample(time);
+        return sample(time);
     }
     /**
      * Get a buffer of oscillator samples
@@ -169,7 +173,7 @@ public class SignalGenerator  {
 
         // Generate sinePackageSize samples based on the current cycle from frequency
         for (int i=0; i < packageSize/ properties.getSampleSize(); i++) {
-        	signalBuffer.putShort((short)(Short.MAX_VALUE * getSample(cyclePosition)));
+        	signalBuffer.putShort((short)(Short.MAX_VALUE * sample(cyclePosition)));
 
         	cyclePosition += cylce;
            if (cyclePosition > 1)
@@ -192,6 +196,12 @@ public class SignalGenerator  {
 		stopwatch.reset();
 		stopwatch.start();
 				
+	}
+
+
+	public float getTime() {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 

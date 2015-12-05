@@ -4,7 +4,7 @@ public class GeneratorConstants {
 
 	// Defaults
 	public static final float DEFAULT_FREQUENCY = 500f; 
-	public static final float DEFAULT_PHASE = 0f; 
+	public static final float DEFAULT_PHASE = 0.0f; 
 												
 	public static final int DEFAULT_BITS = 16;
 

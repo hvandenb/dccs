@@ -165,11 +165,11 @@
 			<version>0.0.2</version>
 		</dependency>
 
-<dependency>
+<!-- >dependency>
     <groupId>com.typesafe.akka</groupId>
     <artifactId>akka-cluster_2.11</artifactId>
     <version>2.4.1</version>
-</dependency>
+</dependency-->
 
 	</dependencies>
 

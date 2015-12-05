@@ -12,6 +12,7 @@ import org.springframework.boot.actuate.metrics.CounterService;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
+import com.google.common.base.Ticker;
 import com.google.common.util.concurrent.AbstractScheduledService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,9 @@ public class GeneratorService extends AbstractScheduledService{
 	
 	@Autowired
 	private SignalWriter writer;
+	
+	// Nice to have a ticker
+	private Ticker ticker = Ticker.systemTicker();
 	
 	@PostConstruct
 	void init() {
@@ -65,9 +69,10 @@ public class GeneratorService extends AbstractScheduledService{
 	 */
 	public Measurement<Double> sample() {
 
-		float time = generator.getTime();
-		double value = generator.getSample(time);
-		return new Measurement<Double>((long) time, GeneratorConstants.MEASUREMENT_NAME, value);
+		long time = ticker.read();
+		float elaspsedTime = generator.getElapsedTime();
+		double value = generator.sample(elaspsedTime);
+		return new Measurement<Double>(time, GeneratorConstants.MEASUREMENT_NAME, value);
 		
 	}
 		
@@ -85,7 +90,7 @@ public class GeneratorService extends AbstractScheduledService{
 	private void sampleAndPersist() {
 		
 	float time = generator.getTime();
-	float value = generator.getSample(time);
+	float value = generator.sample(time);
 	writer.write(this.sample());
 	
 	
