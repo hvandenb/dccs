@@ -19,6 +19,8 @@ import lombok.Data;
 public class ClusterProperties {
 
 	private String members = "";
+	private String seeds = "";
+	private int heartBeat = 100;
 	private String hostName = ClusterConstants.DEFAULT_HOST;
 	private int port= ClusterConstants.DEFAULT_PORT;
 	private String name = ClusterConstants.DEFAULT_NAME;

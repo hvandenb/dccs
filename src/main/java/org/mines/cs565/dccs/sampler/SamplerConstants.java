@@ -20,5 +20,7 @@ public class SamplerConstants {
 	public static final boolean DEFAULT_ENABLE_OUTPUT = false;
 	public static final String MEASUREMENT_NAME = "wave.guage.sampler";
 	public static final String DEFAULT_VECTOR = "true,true,false";
+	public static final String DEFAULT_DELIMITER = ",";
+	public static final boolean DEFAULT_LOCAL_RTV = false;
 
 }

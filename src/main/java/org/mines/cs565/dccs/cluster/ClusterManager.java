@@ -1,5 +1,9 @@
 package org.mines.cs565.dccs.cluster;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -16,8 +20,12 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.google.code.gossip.GossipMember;
+import com.google.code.gossip.GossipService;
 import com.google.code.gossip.GossipSettings;
+import com.google.code.gossip.LogLevel;
 import com.google.code.gossip.RemoteGossipMember;
+import com.google.code.gossip.event.GossipListener;
+import com.google.code.gossip.event.GossipState;
 import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
@@ -50,19 +58,22 @@ public class ClusterManager {
 	private ClusterProperties settings;
 
 	private final Cluster cluster;
+	private final Gossiper gossiper;
 
 	private static Optional<Atomix> server = null;
 
 	List<Address> members = new ArrayList<Address>();
-	List<GossipMember> startupMembers = new ArrayList<GossipMember>();
+	List<GossipService> clients = new ArrayList<>();
+	List<GossipMember> seedMembers = new ArrayList<GossipMember>();
 
 	private Splitter splitter;
 
 	/**
-	 * 
+	 * Constructor...
 	 */
 	public ClusterManager() {
 		this.cluster = new Cluster();
+		this.gossiper = new Gossiper();
 	}
 
 	/**
@@ -83,7 +94,16 @@ public class ClusterManager {
 		return queue;
 
 	}
-
+	/** Simple wrapper */
+	private void sleep(int i) {
+		try {
+			Thread.sleep(i);
+		} catch (InterruptedException e) {
+			log.warn(e.getLocalizedMessage());
+		}
+		
+	}
+	
 	/**
 	 * Initializes the Cluster Manager and sets up the cluster
 	 */
@@ -99,26 +119,35 @@ public class ClusterManager {
 			log.error(e.getLocalizedMessage());
 		}
 
-		Address address = new Address(settings.getHostName(), settings.getPort());
+		gossiper.startAsync();
 
-		buildPeers(settings.getMembers());
-
-		String logDir = settings.getLogLocation() + UUID.randomUUID().toString();
-		log.info("Data Log location: [{}]", logDir);
-
-		// Setup and initialize the Raft Server
-		Builder builder = AtomixReplica.builder(address, this.members);
-		// Storage s = new Storage(logDir, StorageLevel.DISK);
-		Storage s = new Storage(logDir);
-		builder.withStorage(s).withTransport(new NettyTransport());
-		server = Optional.of(builder.build());
-
-		cluster.startAsync();
 		try {
-			cluster.awaitRunning(2, TimeUnit.SECONDS);
+			gossiper.awaitRunning(2, TimeUnit.SECONDS);
 		} catch (TimeoutException e) {
-			log.warn("Timed out on waiting for cluster to start");
+			log.warn("Timed out on waiting for gossiper to start");
 		}
+
+		
+//		Address address = new Address(settings.getHostName(), settings.getPort());
+//
+//		buildPeers(settings.getMembers());
+//
+//		String logDir = settings.getLogLocation() + UUID.randomUUID().toString();
+//		log.info("Data Log location: [{}]", logDir);
+//
+//		// Setup and initialize the Raft Server
+//		Builder builder = AtomixReplica.builder(address, this.members);
+//		// Storage s = new Storage(logDir, StorageLevel.DISK);
+//		Storage s = new Storage(logDir);
+//		builder.withStorage(s).withTransport(new NettyTransport());
+//		server = Optional.of(builder.build());
+//
+//		cluster.startAsync();
+//		try {
+//			cluster.awaitRunning(2, TimeUnit.SECONDS);
+//		} catch (TimeoutException e) {
+//			log.warn("Timed out on waiting for cluster to start");
+//		}
 
 		// cluster.run(); // Async call
 		log.info("Completed Initializing the ClusterManager");
@@ -132,18 +161,6 @@ public class ClusterManager {
 		log.info("Stopping the Cluster Manager");
 
 		cluster.stopAsync();
-	}
-	
-	/**
-	 * Start the gossip to find all the other members in the cluster.
-	 * TODO: https://github.com/edwardcapriolo/gossip/tree/b18821d41e147589bf70a594bc6937666b65c406
-	 */
-	private void startGossip() {
-		  GossipSettings gossipSettings = new GossipSettings();
-		  int seedNodes = 3;
-		  for (int i = 1; i < seedNodes+1; ++i) {
-		    startupMembers.add(new RemoteGossipMember("127.0.0." + i, 2000, i + ""));
-		  }
 	}
 
 	/**
@@ -165,8 +182,118 @@ public class ClusterManager {
 	}
 
 	/**
+	 * Based on a string of delimiter separate host and port build a list of
+	 * them
+	 * 
+	 * @param s
+	 *            - String containing the list of host/ports
+	 * @param defaultPort
+	 *            - Default port to use if a port was not specified.
+	 * @return
+	 */
+	private List<HostAndPort> buildEndpointList(String s, int defaultPort) {
+		List<String> sl = Lists.newArrayList(this.splitter.split(Strings.nullToEmpty(s)));
+		List<HostAndPort> hapl = Lists.newArrayListWithCapacity(sl.size());
+
+		for (String e : sl) {
+			hapl.add(HostAndPort.fromString(e).withDefaultPort(defaultPort).requireBracketsForIPv6());
+		}
+
+		return hapl;
+	}
+
+	/**
+	 * 
+	 * @author Henri van den Bulk
+	 *
+	 */
+	private class Gossiper extends AbstractExecutionThreadService implements GossipListener, Closeable {
+
+		@Override
+		protected void run() throws Exception {
+
+			// Start the gossiping...
+			startGossip();
+
+			// We keep checking if we still should be running
+			while (isRunning()) {
+				sleep(1000);
+			}
+
+			// Close all the client connections
+			close();
+		}
+
+		/**
+		 * Start the gossip to find all the other members in the cluster. TODO:
+		 * https://github.com/edwardcapriolo/gossip/tree/
+		 * b18821d41e147589bf70a594bc6937666b65c406
+		 */
+		private void startGossip() {
+
+			GossipSettings gossipSettings = new GossipSettings();
+			List<HostAndPort> seeds = buildEndpointList(settings.getSeeds(), ClusterConstants.DEFAULT_GOSSIP_PORT);
+			seedMembers = Lists.newArrayListWithCapacity(seeds.size());
+			seedMembers.clear();
+
+			for (HostAndPort hap : seeds) {
+				seedMembers.add(new RemoteGossipMember(hap.getHostText(), 
+						hap.getPort(),
+						Node.generateId(hap.getHostText(), hap.getPort()),
+						settings.getHeartBeat()));
+			}
+
+			log.info("Initializing Gossip, with seeds {} ", seeds);
+
+			String myIpAddress = "";
+			try {
+				myIpAddress = InetAddress.getLocalHost().getHostAddress();
+				log.info("Using [{}] for our gossip address", myIpAddress);
+			} catch (UnknownHostException e1) {
+				log.warn(e1.getLocalizedMessage());
+			}
+
+			// Lets start the gossip clients.
+			// Start the clients, waiting cleaning-interval + 1 second between
+			// them which will show the
+			// dead list handling.
+			for (GossipMember member : seedMembers) {
+
+				GossipService gossipService;
+				try {
+					gossipService = new GossipService(myIpAddress, member.getPort(),
+							Node.generateId(member.getHost(), member.getPort()), LogLevel.DEBUG, (ArrayList<GossipMember>) seedMembers, gossipSettings,this);
+					
+					clients.add(gossipService);
+					gossipService.start();
+					sleep(1000);
+
+				} catch (UnknownHostException | InterruptedException e) {
+					log.warn(e.getLocalizedMessage());
+				}
+
+			}
+		}
+	
+
+		@Override
+		public void gossipEvent(GossipMember member, GossipState state) {
+			log.info("Gossip Event member [{}] --> state [{}]", member, state);
+		}
+
+		@Override
+		public void close() throws IOException {
+		    for (GossipService c : clients) {
+		        c.shutdown();
+		      }			
+		}
+
+	}
+
+	/**
 	 * The Cluster is an internal class that manages the cluster as a background
 	 * Service.
+	 * 
 	 * @author Henri van den Bulk
 	 *
 	 */
@@ -176,7 +303,7 @@ public class ClusterManager {
 		 * Starts the Leader Election process.
 		 */
 		private void performLeaderElection() {
-			
+
 			log.info("Starting the Leader Election process");
 			// Create a leader election resource.
 			DistributedLeaderElection election;
@@ -205,9 +332,10 @@ public class ClusterManager {
 				log.error("Election was interupted due to [{}]", e.getMessage());
 			}
 		}
-
+		
 		/**
 		 * Join a named group
+		 * 
 		 * @param name
 		 */
 		private void joinGroup(String name) {
@@ -256,21 +384,16 @@ public class ClusterManager {
 
 				performLeaderElection();
 
-//				joinGroup(settings.getName());
+				// joinGroup(settings.getName());
 
 				// We keep checking if we still should be running
 				while (isRunning()) {
 					while (server.get().isOpen()) {
-						try {
-							Thread.sleep(1000);
-						} catch (InterruptedException e) {
-							log.error(e.getLocalizedMessage());
-						}
+						sleep(1000);
 					}
 
 				}
-			}
-			else {
+			} else {
 				log.warn("The server was not initialized as for some reason the server was not set");
 			}
 		}

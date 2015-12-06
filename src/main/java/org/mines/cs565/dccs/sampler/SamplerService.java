@@ -11,10 +11,14 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.AbstractScheduledService;
 import com.google.common.util.concurrent.AbstractScheduledService.Scheduler;
 
+import io.atomix.catalyst.transport.Address;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -28,6 +32,9 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 
+import org.apache.commons.lang.BooleanUtils;
+import org.apache.commons.lang.StringUtils;
+import org.mines.cs565.dccs.cluster.ClusterConstants;
 import org.mines.cs565.dccs.generator.SignalWriter;
 import org.slf4j.Logger;
 
@@ -47,6 +54,8 @@ public class SamplerService extends AbstractScheduledService {
 	@Autowired
     private Sampler sampler;
 	
+	private Splitter splitter;
+	
 	@Autowired
 	private SignalWriter writer;
 	  
@@ -65,6 +74,28 @@ public class SamplerService extends AbstractScheduledService {
 		T= (long) (properties.getMultiplier() * (1 / frequency) * 1000);
 		
 		return T;
+	}
+	
+	/**
+	 * Build an actual vector list based on a delimiter based string. {@see BooleanUtils}
+	 * @param 
+	 */
+	private List<Boolean> buildVector(String vs) {
+		List<String> list = Lists.newArrayList(this.splitter.split(Strings.nullToEmpty(vs)));
+		List<Boolean> vector = Lists.newArrayListWithCapacity(list.size());
+
+		for (String e : list) {
+			if (e.length() > 1) // We'll assume its the text			
+				vector.add(BooleanUtils.toBooleanObject(e));
+			else if (StringUtils.isNumeric(e))
+			{
+				vector.add(BooleanUtils.toBooleanObject(Integer.parseInt(e)));
+			}
+				
+		}
+		
+		return vector;
+		
 	}
 	
 	/**
@@ -107,15 +138,18 @@ public class SamplerService extends AbstractScheduledService {
 		log.info("Initialize the Sampler Service");
 		
 	    samplingRate = calculateSamplingInterval(properties.getFrequency());
-	    		
+	    
+	    this.splitter = Splitter.onPattern(SamplerConstants.DEFAULT_DELIMITER).omitEmptyStrings().trimResults();
+	    
 		// Ensure we have a timing vector
 		if (timingVector != null)
 			timingVector.clear();
-//		timingVector = new ArrayList<Boolean>();
 		
-		// Just generate the Timer
-		// TODO: Timing vector needs to be provided by the cluster
-		timingVector = generateTimingVector(properties.getBufferSize(), properties.getBufferSize() * 2, 1234);
+		// TODO: Timing vector needs to be provided by the cluster		
+		if (properties.isUseLocalRTV()) // We'll use a provided vector
+			timingVector = buildVector(properties.getVector());
+		else
+			timingVector = generateTimingVector(properties.getBufferSize(), properties.getBufferSize() * 2, 1234);
 		
 		// Initialize a list of measurements, which will be a local buffer
 		measurements = Lists.newArrayListWithCapacity(properties.getBufferSize());

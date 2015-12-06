@@ -25,8 +25,12 @@ public class SamplerProperties {
 	private int multiplier = SamplerConstants.DEFAULT_MULTIPLIER;
 	private int bufferSize = SamplerConstants.DEFAULT_BUFFER_SIZE;
 
-	private boolean enableOutput = SamplerConstants.DEFAULT_ENABLE_OUTPUT;
+	private boolean enableOutput = SamplerConstants.DEFAULT_ENABLE_OUTPUT; 
 
+	/** The Random Timing Vector to be used for local purposes {@link #useLocalRTV} */
 	private String vector = SamplerConstants.DEFAULT_VECTOR;
+	
+	/** Indicates if a local vector is to be used, good for testing */
+	private boolean useLocalRTV = SamplerConstants.DEFAULT_LOCAL_RTV;
 	
 }
