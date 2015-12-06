@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import com.google.code.gossip.GossipMember;
 import com.google.code.gossip.GossipService;
 import com.google.code.gossip.GossipSettings;
+import com.google.code.gossip.LocalGossipMember;
 import com.google.code.gossip.LogLevel;
 import com.google.code.gossip.RemoteGossipMember;
 import com.google.code.gossip.event.GossipListener;
@@ -209,6 +210,13 @@ public class ClusterManager {
 	 */
 	private class Gossiper extends AbstractExecutionThreadService implements GossipListener, Closeable {
 
+		/**
+		 * Retrieve the list of LIVE members
+		 * @return List of Live Members {@link LocalGossipMember}
+		 */
+		public List<LocalGossipMember> members() {
+			getMemberList()
+		}
 		@Override
 		protected void run() throws Exception {
 
@@ -278,7 +286,7 @@ public class ClusterManager {
 
 		@Override
 		public void gossipEvent(GossipMember member, GossipState state) {
-			log.info("Gossip Event member [{}] --> state [{}]", member, state);
+			log.info("Gossip Event {}, state [{}]", member, state);
 		}
 
 		@Override

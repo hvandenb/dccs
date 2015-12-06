@@ -36,8 +36,8 @@ public class Sampler  {
 	
 	private CompletableFuture<DistributedQueue<String>> queue;
 	
-	@Autowired
-	ClusterManager cm=null;
+//	@Autowired
+//	ClusterManager cm=null;
 	
 	/**
 	 * This grabs a sample from the the current sampling source.
@@ -57,14 +57,14 @@ public class Sampler  {
 		measureSource = new GeneratorService();
 		
 				// Let's create the distributed queue
-		queue = cm.createQueue(properties.getQueueName());
-		if (queue != null) {
-			queue.thenAccept(queue -> {
-				log.info("Queue was created");
-			});
-		}
-		else
-			log.error("Unable to create the queue: [{}]", properties.getQueueName());
+//		queue = cm.createQueue(properties.getQueueName());
+//		if (queue != null) {
+//			queue.thenAccept(queue -> {
+//				log.info("Queue was created");
+//			});
+//		}
+//		else
+//			log.error("Unable to create the queue: [{}]", properties.getQueueName());
 	}
 
 }

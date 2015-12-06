@@ -31,6 +31,6 @@ public class SamplerProperties {
 	private String vector = SamplerConstants.DEFAULT_VECTOR;
 	
 	/** Indicates if a local vector is to be used, good for testing */
-	private boolean useLocalRTV = SamplerConstants.DEFAULT_LOCAL_RTV;
+	private boolean uselocalrtv = SamplerConstants.DEFAULT_LOCAL_RTV;
 	
 }

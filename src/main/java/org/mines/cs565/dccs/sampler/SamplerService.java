@@ -146,7 +146,7 @@ public class SamplerService extends AbstractScheduledService {
 			timingVector.clear();
 		
 		// TODO: Timing vector needs to be provided by the cluster		
-		if (properties.isUseLocalRTV()) // We'll use a provided vector
+		if (properties.isUselocalrtv()) // We'll use a provided vector
 			timingVector = buildVector(properties.getVector());
 		else
 			timingVector = generateTimingVector(properties.getBufferSize(), properties.getBufferSize() * 2, 1234);
