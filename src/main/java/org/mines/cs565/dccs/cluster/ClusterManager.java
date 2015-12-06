@@ -215,8 +215,19 @@ public class ClusterManager {
 		 * @return List of Live Members {@link LocalGossipMember}
 		 */
 		public List<LocalGossipMember> members() {
-			getMemberList()
+
+			List<LocalGossipMember> l = new ArrayList<LocalGossipMember>();
+			
+			int i = 0;
+			for (GossipService c : clients) {
+				l.addAll(clients.get(i).get_gossipManager().getMemberList());
+				i++;
+			}
+			
+			return l;
 		}
+		
+		
 		@Override
 		protected void run() throws Exception {
 
