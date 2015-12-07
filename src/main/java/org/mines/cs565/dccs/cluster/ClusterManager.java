@@ -68,14 +68,10 @@ public class ClusterManager {
 	private final Cluster cluster;
 	private final Gossiper gossiper;
 
-	private static Optional<Atomix> server = null;
-
-	List<Address> members = new ArrayList<Address>();
-	List<GossipService> clients = new ArrayList<>();
-	List<GossipMember> seedMembers = new ArrayList<GossipMember>();
-
 	private Splitter splitter;
 
+	private static Optional<Atomix> server = null;
+	
 	/**
 	 * Constructor...
 	 */
@@ -94,14 +90,15 @@ public class ClusterManager {
 	 */
 	public CompletableFuture<DistributedQueue<String>> createQueue(String queueName) {
 
-		if (Strings.nullToEmpty(queueName).isEmpty() || !server.isPresent())
-			return null;
+//		if (Strings.nullToEmpty(queueName).isEmpty() || !server.isPresent())
+//			return null;
+//
+//		CompletableFuture<DistributedQueue<String>> queue = server.get().create(queueName, DistributedQueue.class);
 
-		CompletableFuture<DistributedQueue<String>> queue = server.get().create(queueName, DistributedQueue.class);
-
-		return queue;
+		return null;
 
 	}
+
 	/** Simple wrapper */
 	private void sleep(int i) {
 		try {
@@ -109,45 +106,43 @@ public class ClusterManager {
 		} catch (InterruptedException e) {
 			log.warn(e.getLocalizedMessage());
 		}
-		
+
 	}
-	
-	/** 
+
+	/**
 	 * Return the current IP of the local machine
+	 * 
 	 * @return
 	 */
 	public String getCurrentIp() {
-        try {
-            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface
-                    .getNetworkInterfaces();
-            while (networkInterfaces.hasMoreElements()) {
-                NetworkInterface ni = (NetworkInterface) networkInterfaces
-                        .nextElement();
-                Enumeration<InetAddress> nias = ni.getInetAddresses();
-                while(nias.hasMoreElements()) {
-                    InetAddress ia= (InetAddress) nias.nextElement();
-                    if (!ia.isLinkLocalAddress() 
-                     && !ia.isLoopbackAddress()
-                     && ia instanceof Inet4Address) {
-                        return ia.getHostAddress();
-                    }
-                }
-            }
-        } catch (SocketException e) {
-            log.error("unable to get current IP " + e.getMessage(), e);
-        }
-        return "";
-    }
-	
+		try {
+			Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+			while (networkInterfaces.hasMoreElements()) {
+				NetworkInterface ni = (NetworkInterface) networkInterfaces.nextElement();
+				Enumeration<InetAddress> nias = ni.getInetAddresses();
+				while (nias.hasMoreElements()) {
+					InetAddress ia = (InetAddress) nias.nextElement();
+					if (!ia.isLinkLocalAddress() && !ia.isLoopbackAddress() && ia instanceof Inet4Address) {
+						return ia.getHostAddress();
+					}
+				}
+			}
+		} catch (SocketException e) {
+			log.error("unable to get current IP " + e.getMessage(), e);
+		}
+		return "";
+	}
+
 	/**
 	 * Initializes the Cluster Manager and sets up the cluster
 	 */
 	@PostConstruct
 	void init() {
 
-		log.info("Initialize the ClusterManager at [{}:{}]", settings.getHostName(), settings.getPort());
+		log.info("Initialize the ClusterManager");
 		this.splitter = Splitter.onPattern(ClusterConstants.DEFAULT_DELIMITER).omitEmptyStrings().trimResults();
 
+		// Get some sleep we'll be needing it
 		sleep(1000);
 
 		gossiper.startAsync();
@@ -159,22 +154,6 @@ public class ClusterManager {
 		}
 
 		log.info("We have {} members that are live", gossiper.members().size());
-		
-		
-//		Address address = new Address(settings.getHostName(), settings.getPort());
-//
-//		buildPeers(settings.getMembers());
-//
-//		String logDir = settings.getLogLocation() + UUID.randomUUID().toString();
-//		log.info("Data Log location: [{}]", logDir);
-//
-//		// Setup and initialize the Raft Server
-//		Builder builder = AtomixReplica.builder(address, this.members);
-//		// Storage s = new Storage(logDir, StorageLevel.DISK);
-//		Storage s = new Storage(logDir);
-//		builder.withStorage(s).withTransport(new NettyTransport());
-//		server = Optional.of(builder.build());
-//
 
 		cluster.startAsync();
 		try {
@@ -195,24 +174,6 @@ public class ClusterManager {
 		log.info("Stopping the Cluster Manager");
 
 		cluster.stopAsync();
-	}
-
-	/**
-	 * Build the server peers from a list of comma separated list of peers.
-	 * 
-	 * @param peers
-	 */
-	private void buildPeers(String peers) {
-		log.info("Building Members: " + peers);
-		List<String> peerList = Lists.newArrayList(this.splitter.split(Strings.nullToEmpty(peers)));
-
-		members.clear();
-
-		for (String s : peerList) {
-			HostAndPort hp = HostAndPort.fromString(s).withDefaultPort(ClusterConstants.DEFAULT_PORT)
-					.requireBracketsForIPv6();
-			members.add(new Address(hp.getHostText(), hp.getPort()));
-		}
 	}
 
 	/**
@@ -243,25 +204,28 @@ public class ClusterManager {
 	 */
 	private class Gossiper extends AbstractExecutionThreadService implements GossipListener, Closeable {
 
+		List<GossipService> clients = new ArrayList<>();
+		List<GossipMember> seedMembers = new ArrayList<GossipMember>();
+
 		/**
 		 * Retrieve the list of LIVE members
+		 * 
 		 * @return List of Live Members {@link LocalGossipMember}
 		 */
 		public List<LocalGossipMember> members() {
 
 			Set<LocalGossipMember> l = new HashSet<LocalGossipMember>();
-			
+
 			int i = 0;
 			for (GossipService c : clients) {
 				l.addAll(clients.get(i).get_gossipManager().getMemberList());
 				i++;
 			}
-			
+
 			return new ArrayList<LocalGossipMember>(l);
-			
+
 		}
-		
-		
+
 		@Override
 		protected void run() throws Exception {
 
@@ -276,7 +240,7 @@ public class ClusterManager {
 			// Close all the client connections
 			close();
 		}
-		
+
 		/**
 		 * Start the gossip to find all the other members in the cluster. TODO:
 		 * https://github.com/edwardcapriolo/gossip/tree/
@@ -286,16 +250,14 @@ public class ClusterManager {
 
 			GossipSettings gossipSettings = new GossipSettings(settings.getGossipInterval(),
 					settings.getGossipCleanupInterval());
-			
-			List<HostAndPort> seeds = buildEndpointList(settings.getSeeds(), ClusterConstants.DEFAULT_GOSSIP_PORT);
+
+			List<HostAndPort> seeds = buildEndpointList(settings.getSeeds(), settings.getGossipPort());
 			seedMembers = Lists.newArrayListWithCapacity(seeds.size());
 			seedMembers.clear();
 
 			for (HostAndPort hap : seeds) {
-				seedMembers.add(new RemoteGossipMember(hap.getHostText(), 
-						hap.getPort(),
-						Node.generateId(hap.getHostText(), hap.getPort()),
-						settings.getHeartBeat()));
+				seedMembers.add(new RemoteGossipMember(hap.getHostText(), hap.getPort(),
+						Node.generateId(hap.getHostText(), hap.getPort()), settings.getHeartBeat()));
 			}
 
 			log.info("Initializing Gossip, with seeds {} ", seeds);
@@ -312,8 +274,9 @@ public class ClusterManager {
 				GossipService gossipService;
 				try {
 					gossipService = new GossipService(myIpAddress, member.getPort(),
-							Node.generateId(member.getHost(), member.getPort()), LogLevel.DEBUG, (ArrayList<GossipMember>) seedMembers, gossipSettings,this);
-					
+							Node.generateId(member.getHost(), member.getPort()), LogLevel.DEBUG,
+							(ArrayList<GossipMember>) seedMembers, gossipSettings, this);
+
 					clients.add(gossipService);
 					gossipService.start();
 					sleep(1000);
@@ -324,7 +287,6 @@ public class ClusterManager {
 
 			}
 		}
-	
 
 		@Override
 		public void gossipEvent(GossipMember member, GossipState state) {
@@ -333,9 +295,9 @@ public class ClusterManager {
 
 		@Override
 		public void close() throws IOException {
-		    for (GossipService c : clients) {
-		        c.shutdown();
-		      }			
+			for (GossipService c : clients) {
+				c.shutdown();
+			}
 		}
 
 	}
@@ -349,6 +311,28 @@ public class ClusterManager {
 	 */
 	private class Cluster extends AbstractExecutionThreadService {
 
+		List<Address> members = new ArrayList<Address>();
+
+		/**
+		 * Convert a list of Gossip Members to RAFT Cluster Members
+		 * 
+		 * @param list of gossip members
+		 */
+		private List<Address> convertToMembers(List<LocalGossipMember> l) {
+			List<Address> list = Lists.newArrayListWithCapacity(l.size());
+			
+			log.info("Building Members: {}", l);
+			
+			list.clear();
+
+			for (LocalGossipMember m : l) {
+				list.add(new Address(m.getHost(), settings.getPort()));
+			}
+			
+			return list;
+		}
+
+		
 		/**
 		 * Starts the Leader Election process.
 		 */
@@ -382,7 +366,7 @@ public class ClusterManager {
 				log.error("Election was interupted due to [{}]", e.getMessage());
 			}
 		}
-		
+
 		/**
 		 * Join a named group
 		 * 
@@ -422,31 +406,72 @@ public class ClusterManager {
 		@Override
 		protected void run() {
 			// server.open().join();
-
+			List<LocalGossipMember> l = null;
 			// start the server using sync calls
-			log.info("Opening the Atomix Server");
+			log.info("Starting the RAFT Cluster");
+			
+			l = gossiper.members();
 
-			if (server.isPresent()) {
-
-				server.get().open().join();
-
-				log.info("Replica started!");
-
-				performLeaderElection();
-
-				// joinGroup(settings.getName());
-
-				// We keep checking if we still should be running
-				while (isRunning()) {
-					while (server.get().isOpen()) {
-						sleep(1000);
-					}
-
-				}
-			} else {
-				log.warn("The server was not initialized as for some reason the server was not set");
+			// We don't start the server till we have larger size
+			while(l.size() <= 1) {
+				// Let's make sure there is no request for shutdown
+				if (!isRunning())
+					return;
+				
+				l.clear();
+				l = gossiper.members();
+				log.info("We have {} members, quorum {} that are live: {}", l.size(), (l.size()/2)+1, l);
+				sleep(1000);
+				
+			}
+			
+			startServer(l);
+			
+			while (isRunning()) {
+				l.clear();
+				l = gossiper.members();
+				log.info("We have {} members, quorum {} that are live: {}", l.size(), (l.size()/2)+1, l);
+				sleep(1000);
 			}
 		}
+		
+		
+		/**
+		 * Start up the RAFT server
+		 * @param l list of found servers through gossiping..
+		 */
+		private void startServer(List<LocalGossipMember> l) {
+			
+			String host = getCurrentIp();
+			if (Strings.isNullOrEmpty(host))
+				host = settings.getHostName();
+			log.info("Initialize the Cluster at [{}:{}]", host, settings.getPort());
+
+			Address address = new Address(settings.getHostName(),
+			settings.getPort());
+			
+			members = convertToMembers(l);
+
+			String logDir = settings.getLogLocation() +
+			UUID.randomUUID().toString();
+			log.info("Data Log location: [{}]", logDir);
+
+			// Setup and initialize the Raft Server
+			Builder builder = AtomixReplica.builder(address, members);
+
+			 // TODO: Need to something for storage
+			 //			 Storage s = new Storage(logDir, StorageLevel.DISK);
+//			 Storage s = new Storage(logDir);
+// 			 builder.withStorage(s);
+
+			builder.withTransport(new NettyTransport());
+			 
+			server = Optional.of(builder.build());
+			server.get().open().thenRun(() -> {
+				  log.info("Server has started");
+			});			
+		}
+		
 	}
 
 }

@@ -3,6 +3,8 @@
  */
 package org.mines.cs565.dccs.cluster;
 
+import org.crsh.console.jline.internal.Log;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.google.common.hash.HashCode;
@@ -11,11 +13,13 @@ import com.google.common.hash.Hashing;
 import com.google.common.net.HostAndPort;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author hvandenb
  *
  */
+@Slf4j
 public class Node implements Comparable<Node>{
 
 	@Getter
@@ -28,8 +32,10 @@ public class Node implements Comparable<Node>{
 		       .putString(hp.getHostText(), Charsets.UTF_8)
 		       .putInt(hp.getPort())
 		       .hash();
+		log.debug("Id generation: {} generated {}", hp, hc.toString());
+		return hc.toString();
 		
-		return Long.toString(hc.asInt());
+		//return Long.toString(hc.asInt());
 		
 	}
 	
