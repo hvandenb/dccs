@@ -29,4 +29,6 @@ public class ClusterProperties {
 	private int gossipPort = ClusterConstants.DEFAULT_GOSSIP_PORT;
 	private int gossipInterval = ClusterConstants.DEFAULT_GOSSIP_INTERVAL;
 	private int gossipCleanupInterval = ClusterConstants.DEFAULT_GOSSIP_CLEANUP_INTERVAL;
+	/** Minimum quorum we need to ensure we can do leader election etc. (n/2)+1 */
+	private int minimumQuorum = ClusterConstants.DEFAULT_MIN_QUORUM;
 }

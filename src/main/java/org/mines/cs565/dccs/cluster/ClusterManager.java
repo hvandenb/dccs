@@ -17,11 +17,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 import org.mockito.internal.util.collections.Sets;
+import org.neo4j.cypher.internal.compiler.v2_1.ast.rewriters.isolateAggregation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -44,6 +47,7 @@ import com.google.common.util.concurrent.AbstractExecutionThreadService;
 import io.atomix.Atomix;
 import io.atomix.AtomixReplica;
 import io.atomix.AtomixReplica.Builder;
+import io.atomix.atomic.DistributedAtomicValue;
 import io.atomix.catalyst.transport.Address;
 import io.atomix.catalyst.transport.NettyTransport;
 import io.atomix.collections.DistributedQueue;
@@ -70,7 +74,7 @@ public class ClusterManager {
 
 	private Splitter splitter;
 
-	private static Optional<Atomix> server = null;
+	private static Optional<AtomixReplica> server = null;
 	
 	/**
 	 * Constructor...
@@ -214,11 +218,14 @@ public class ClusterManager {
 		 */
 		public List<LocalGossipMember> members() {
 
+			//TODO Remove our self from the list
+			
 			Set<LocalGossipMember> l = new HashSet<LocalGossipMember>();
-
+			
 			int i = 0;
 			for (GossipService c : clients) {
 				l.addAll(clients.get(i).get_gossipManager().getMemberList());
+				l.remove(clients.get(i).get_gossipManager().getMyself()); // We'll remove ourselves from the list
 				i++;
 			}
 
@@ -230,7 +237,7 @@ public class ClusterManager {
 		protected void run() throws Exception {
 
 			// Start the gossiping...
-			startGossip();
+			start();
 
 			// We keep checking if we still should be running
 			while (isRunning()) {
@@ -246,7 +253,7 @@ public class ClusterManager {
 		 * https://github.com/edwardcapriolo/gossip/tree/
 		 * b18821d41e147589bf70a594bc6937666b65c406
 		 */
-		private void startGossip() {
+		private void start() {
 
 			GossipSettings gossipSettings = new GossipSettings(settings.getGossipInterval(),
 					settings.getGossipCleanupInterval());
@@ -278,7 +285,9 @@ public class ClusterManager {
 							(ArrayList<GossipMember>) seedMembers, gossipSettings, this);
 
 					clients.add(gossipService);
+
 					gossipService.start();
+					log.info("Started Gossip service {} on Thread [{}]", gossipService, gossipService.get_gossipManager().getName());
 					sleep(1000);
 
 				} catch (UnknownHostException | InterruptedException e) {
@@ -309,10 +318,13 @@ public class ClusterManager {
 	 * @author Henri van den Bulk
 	 *
 	 */
-	private class Cluster extends AbstractExecutionThreadService {
+	private class Cluster extends AbstractExecutionThreadService implements Consumer<Long> {
 
 		List<Address> members = new ArrayList<Address>();
-
+		Optional<DistributedMembershipGroup> group;
+		DistributedLeaderElection election; 			// Create a leader election resource.
+		AtomicBoolean isLeader = new AtomicBoolean(Boolean.FALSE);
+		
 		/**
 		 * Convert a list of Gossip Members to RAFT Cluster Members
 		 * 
@@ -332,38 +344,35 @@ public class ClusterManager {
 			return list;
 		}
 
+		private DistributedAtomicValue<List<Boolean>> createValue(String name) {
+			DistributedAtomicValue<List<Boolean>> r = null;
+			
+			server.get().<DistributedAtomicValue<List<Boolean>>>create(name, DistributedAtomicValue.class).thenAccept(value -> {
+				log.info("Value created");
+			});
+			
+			return r;
+		}
 		
 		/**
 		 * Starts the Leader Election process.
 		 */
-		private void performLeaderElection() {
+		private void election() {
 
 			log.info("Starting the Leader Election process");
-			// Create a leader election resource.
-			DistributedLeaderElection election;
+
 			try {
-				election = server.get().create("election", DistributedLeaderElection.class).get();
+				// Create a leader election resource.
+				election = server.get().create("election", DistributedLeaderElection.class).get(2, TimeUnit.SECONDS);
 
 				// Register a callback to be called when this election instance
 				// is elected the leader
-				election.onElection(epoch -> {
-
-					log.info("We've been elected as the leader");
-
-					// Verify that this node is still the leader
-					election.isLeader(epoch).thenAccept(leader -> {
-						if (leader) {
-							log.info("We're still the leader");
-							// Do something important
-						} else {
-							log.info("Lost leadership!");
-						}
-					});
-
-				}).join();
+				election.onElection(this).join();
 
 			} catch (InterruptedException | ExecutionException e) {
 				log.error("Election was interupted due to [{}]", e.getMessage());
+			} catch (TimeoutException e) {
+				log.error("Election creation timeed out [{}]}", e.getLocalizedMessage());
 			}
 		}
 
@@ -372,24 +381,23 @@ public class ClusterManager {
 		 * 
 		 * @param name
 		 */
-		private void joinGroup(String name) {
+		private void join(String name) {
 			try {
 
 				log.info("Creating membership group");
-				DistributedMembershipGroup group;
 
-				group = server.get().create(name, DistributedMembershipGroup.class).get();
+				group = Optional.of(server.get().create(name, DistributedMembershipGroup.class).get());
 
-				log.info("Joining the {} group", settings.getName());
-				group.join().thenAccept(member -> {
+				log.info("Joining the {} group", name);
+				group.get().join().thenAccept(member -> {
 					log.info("Joined group with member ID: " + member.id());
 				});
 
-				group.onJoin(member -> {
+				group.get().onJoin(member -> {
 					log.info(member.id() + " joined the group");
 				});
 
-				group.onLeave(member -> {
+				group.get().onLeave(member -> {
 					log.info(member.id() + " left the group");
 				});
 
@@ -407,30 +415,40 @@ public class ClusterManager {
 		protected void run() {
 			// server.open().join();
 			List<LocalGossipMember> l = null;
+			int quorum = 0;
+			
 			// start the server using sync calls
 			log.info("Starting the RAFT Cluster");
 			
 			l = gossiper.members();
 
 			// We don't start the server till we have larger size
-			while(l.size() <= 1) {
+			while(quorum < settings.getMinimumQuorum()) {
 				// Let's make sure there is no request for shutdown
 				if (!isRunning())
 					return;
 				
 				l.clear();
 				l = gossiper.members();
-				log.info("We have {} members, quorum {} that are live: {}", l.size(), (l.size()/2)+1, l);
-				sleep(1000);
-				
+				quorum = (l.size()/2)+1;
+				log.info("Quorum of [{}] not yet met, quorum: [{}] n: [{}]", settings.getMinimumQuorum(), quorum, l.size());
+				sleep(1000);			
 			}
 			
-			startServer(l);
+			log.info("Quorum met time to start the server");
+			
+			start(l);
+
+//			join(settings.getName());
+//			election();
+			
+			DistributedAtomicValue<List<Boolean>> value = createValue("vector");
 			
 			while (isRunning()) {
 				l.clear();
 				l = gossiper.members();
-				log.info("We have {} members, quorum {} that are live: {}", l.size(), (l.size()/2)+1, l);
+				quorum = (l.size()/2)+1;
+				log.info("live members [{}], quorum [{}] leader? [{}]", l.size(), quorum, isLeader.get());
 				sleep(1000);
 			}
 		}
@@ -440,14 +458,14 @@ public class ClusterManager {
 		 * Start up the RAFT server
 		 * @param l list of found servers through gossiping..
 		 */
-		private void startServer(List<LocalGossipMember> l) {
+		private void start(List<LocalGossipMember> l) {
 			
 			String host = getCurrentIp();
 			if (Strings.isNullOrEmpty(host))
 				host = settings.getHostName();
 			log.info("Initialize the Cluster at [{}:{}]", host, settings.getPort());
 
-			Address address = new Address(settings.getHostName(),
+			Address address = new Address(host,
 			settings.getPort());
 			
 			members = convertToMembers(l);
@@ -468,9 +486,32 @@ public class ClusterManager {
 			 
 			server = Optional.of(builder.build());
 			server.get().open().thenRun(() -> {
-				  log.info("Server has started");
+				  log.info("RAFT Server has started");
 			});			
 		}
+
+
+		/**
+		 * This gets called when there is an election change
+		 */
+		@Override
+		public void accept(Long t) {
+				log.info("We've been elected as the leader");
+				isLeader.set(Boolean.TRUE);
+				// Verify that this node is still the leader
+				election.isLeader(t).thenAccept(leader -> {
+					if (leader) {
+						log.info("We're still the leader");
+						isLeader.set(Boolean.TRUE);
+						
+						// Do something important
+					} else {
+						log.info("Lost leadership!");
+						isLeader.set(Boolean.FALSE);
+					}
+				});
+
+			}	
 		
 	}
 
