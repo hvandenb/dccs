@@ -2,10 +2,16 @@ package org.mines.cs565.dccs.cluster;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -15,6 +21,7 @@ import java.util.concurrent.TimeoutException;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import org.mockito.internal.util.collections.Sets;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -105,6 +112,33 @@ public class ClusterManager {
 		
 	}
 	
+	/** 
+	 * Return the current IP of the local machine
+	 * @return
+	 */
+	public String getCurrentIp() {
+        try {
+            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface
+                    .getNetworkInterfaces();
+            while (networkInterfaces.hasMoreElements()) {
+                NetworkInterface ni = (NetworkInterface) networkInterfaces
+                        .nextElement();
+                Enumeration<InetAddress> nias = ni.getInetAddresses();
+                while(nias.hasMoreElements()) {
+                    InetAddress ia= (InetAddress) nias.nextElement();
+                    if (!ia.isLinkLocalAddress() 
+                     && !ia.isLoopbackAddress()
+                     && ia instanceof Inet4Address) {
+                        return ia.getHostAddress();
+                    }
+                }
+            }
+        } catch (SocketException e) {
+            log.error("unable to get current IP " + e.getMessage(), e);
+        }
+        return "";
+    }
+	
 	/**
 	 * Initializes the Cluster Manager and sets up the cluster
 	 */
@@ -114,11 +148,7 @@ public class ClusterManager {
 		log.info("Initialize the ClusterManager at [{}:{}]", settings.getHostName(), settings.getPort());
 		this.splitter = Splitter.onPattern(ClusterConstants.DEFAULT_DELIMITER).omitEmptyStrings().trimResults();
 
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			log.error(e.getLocalizedMessage());
-		}
+		sleep(1000);
 
 		gossiper.startAsync();
 
@@ -128,6 +158,8 @@ public class ClusterManager {
 			log.warn("Timed out on waiting for gossiper to start");
 		}
 
+		log.info("We have {} members that are live", gossiper.members().size());
+		
 		
 //		Address address = new Address(settings.getHostName(), settings.getPort());
 //
@@ -143,12 +175,13 @@ public class ClusterManager {
 //		builder.withStorage(s).withTransport(new NettyTransport());
 //		server = Optional.of(builder.build());
 //
-//		cluster.startAsync();
-//		try {
-//			cluster.awaitRunning(2, TimeUnit.SECONDS);
-//		} catch (TimeoutException e) {
-//			log.warn("Timed out on waiting for cluster to start");
-//		}
+
+		cluster.startAsync();
+		try {
+			cluster.awaitRunning(2, TimeUnit.SECONDS);
+		} catch (TimeoutException e) {
+			log.warn("Timed out on waiting for cluster to start");
+		}
 
 		// cluster.run(); // Async call
 		log.info("Completed Initializing the ClusterManager");
@@ -216,7 +249,7 @@ public class ClusterManager {
 		 */
 		public List<LocalGossipMember> members() {
 
-			List<LocalGossipMember> l = new ArrayList<LocalGossipMember>();
+			Set<LocalGossipMember> l = new HashSet<LocalGossipMember>();
 			
 			int i = 0;
 			for (GossipService c : clients) {
@@ -224,7 +257,8 @@ public class ClusterManager {
 				i++;
 			}
 			
-			return l;
+			return new ArrayList<LocalGossipMember>(l);
+			
 		}
 		
 		
@@ -242,7 +276,7 @@ public class ClusterManager {
 			// Close all the client connections
 			close();
 		}
-
+		
 		/**
 		 * Start the gossip to find all the other members in the cluster. TODO:
 		 * https://github.com/edwardcapriolo/gossip/tree/
@@ -250,7 +284,9 @@ public class ClusterManager {
 		 */
 		private void startGossip() {
 
-			GossipSettings gossipSettings = new GossipSettings();
+			GossipSettings gossipSettings = new GossipSettings(settings.getGossipInterval(),
+					settings.getGossipCleanupInterval());
+			
 			List<HostAndPort> seeds = buildEndpointList(settings.getSeeds(), ClusterConstants.DEFAULT_GOSSIP_PORT);
 			seedMembers = Lists.newArrayListWithCapacity(seeds.size());
 			seedMembers.clear();
@@ -264,13 +300,8 @@ public class ClusterManager {
 
 			log.info("Initializing Gossip, with seeds {} ", seeds);
 
-			String myIpAddress = "";
-			try {
-				myIpAddress = InetAddress.getLocalHost().getHostAddress();
-				log.info("Using [{}] for our gossip address", myIpAddress);
-			} catch (UnknownHostException e1) {
-				log.warn(e1.getLocalizedMessage());
-			}
+			String myIpAddress = Strings.nullToEmpty(getCurrentIp());
+			log.info("Using [{}] for our gossip address", myIpAddress);
 
 			// Lets start the gossip clients.
 			// Start the clients, waiting cleaning-interval + 1 second between

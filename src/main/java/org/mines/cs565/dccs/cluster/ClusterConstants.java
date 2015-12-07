@@ -9,5 +9,7 @@ public class ClusterConstants {
 	public static final String DEFAULT_DELIMITER = ",";
 	public static final String DEFAULT_NAME = "dccs";
 	public static final String DEFAULT_LOG_DIRECTORY = "/logs/";
+	public static final int DEFAULT_GOSSIP_INTERVAL = 1000;
+	public static final int DEFAULT_GOSSIP_CLEANUP_INTERVAL = 10000;
 	
 }

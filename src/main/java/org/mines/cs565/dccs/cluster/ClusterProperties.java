@@ -25,5 +25,6 @@ public class ClusterProperties {
 	private int port= ClusterConstants.DEFAULT_PORT;
 	private String name = ClusterConstants.DEFAULT_NAME;
 	private String logLocation = ClusterConstants.DEFAULT_LOG_DIRECTORY;
-	
+	private int gossipInterval = ClusterConstants.DEFAULT_GOSSIP_INTERVAL;
+	private int gossipCleanupInterval = ClusterConstants.DEFAULT_GOSSIP_CLEANUP_INTERVAL;
 }
