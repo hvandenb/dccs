@@ -1,5 +1,7 @@
 package org.mines.cs565.dccs.cluster;
 
+import java.time.Duration;
+
 public class ClusterConstants {
 
 	// Defaults
@@ -12,5 +14,7 @@ public class ClusterConstants {
 	public static final int DEFAULT_GOSSIP_INTERVAL = 1000;
 	public static final int DEFAULT_GOSSIP_CLEANUP_INTERVAL = 10000;
 	public static final int DEFAULT_MIN_QUORUM = 1;
+	public static final int DEFAULT_ELECTION_TIMEOUT = 1000;
+	public static final int DEFAULT_HEARTBEAT = 150;
 	
 }

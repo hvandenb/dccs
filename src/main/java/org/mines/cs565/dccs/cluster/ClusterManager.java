@@ -24,7 +24,6 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 import org.mockito.internal.util.collections.Sets;
-import org.neo4j.cypher.internal.compiler.v2_1.ast.rewriters.isolateAggregation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -53,9 +52,11 @@ import io.atomix.catalyst.transport.NettyTransport;
 import io.atomix.collections.DistributedQueue;
 import io.atomix.coordination.DistributedLeaderElection;
 import io.atomix.coordination.DistributedMembershipGroup;
+import io.atomix.copycat.server.CopycatServer;
 import io.atomix.copycat.server.storage.Storage;
 import io.atomix.copycat.server.storage.StorageLevel;
 import lombok.extern.slf4j.Slf4j;
+import java.time.Duration;
 
 /**
  * 
@@ -74,6 +75,7 @@ public class ClusterManager {
 
 	private Splitter splitter;
 
+//	private static Optional<AtomixReplica> server = null;
 	private static Optional<AtomixReplica> server = null;
 	
 	/**
@@ -325,6 +327,8 @@ public class ClusterManager {
 		DistributedLeaderElection election; 			// Create a leader election resource.
 		AtomicBoolean isLeader = new AtomicBoolean(Boolean.FALSE);
 		
+		CopycatServer.Builder serverBuilder;
+		
 		/**
 		 * Convert a list of Gossip Members to RAFT Cluster Members
 		 * 
@@ -432,6 +436,7 @@ public class ClusterManager {
 				l = gossiper.members();
 				quorum = (l.size()/2)+1;
 				log.info("Quorum of [{}] not yet met, quorum: [{}] n: [{}]", settings.getMinimumQuorum(), quorum, l.size());
+
 				sleep(1000);			
 			}
 			
@@ -476,13 +481,18 @@ public class ClusterManager {
 
 			// Setup and initialize the Raft Server
 			Builder builder = AtomixReplica.builder(address, members);
+			
+//			serverBuilder = CopycatServer.builder(address, members);
+			builder.withTransport(new NettyTransport());
+			builder.withElectionTimeout(Duration.ofSeconds(settings.getElectinTimeout()));
+			builder.withHeartbeatInterval(Duration.ofSeconds(settings.getHeartBeat()));
 
 			 // TODO: Need to something for storage
 			 //			 Storage s = new Storage(logDir, StorageLevel.DISK);
 //			 Storage s = new Storage(logDir);
 // 			 builder.withStorage(s);
 
-			builder.withTransport(new NettyTransport());
+//			builder.withTransport(new NettyTransport());
 			 
 			server = Optional.of(builder.build());
 			server.get().open().thenRun(() -> {
