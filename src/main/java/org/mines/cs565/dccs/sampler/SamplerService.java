@@ -25,7 +25,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.AbstractScheduledService;
 
-import io.atomix.variables.DistributedValue;
+import io.atomix.atomic.DistributedAtomicValue;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -58,7 +58,7 @@ public class SamplerService extends AbstractScheduledService {
 	List<Measurement<Double>> measurements;
 	
 	// this will be our distributed 
-	Optional<DistributedValue<List<Boolean>>> rtv = Optional.absent();
+	Optional<DistributedAtomicValue<List<Boolean>>> rtv = Optional.absent();
 	
 	/**
 	 * Calculate the sampling interval based on a frequency in Hz. 

@@ -44,14 +44,13 @@ import com.google.common.util.concurrent.AbstractExecutionThreadService;
 
 import io.atomix.AtomixReplica;
 import io.atomix.AtomixReplica.Builder;
+import io.atomix.atomic.DistributedAtomicValue;
 import io.atomix.catalyst.transport.Address;
 import io.atomix.catalyst.transport.NettyTransport;
 import io.atomix.collections.DistributedQueue;
 import io.atomix.coordination.DistributedLeaderElection;
 import io.atomix.coordination.DistributedMembershipGroup;
-import io.atomix.copycat.server.CopycatServer;
 import io.atomix.copycat.server.storage.Storage;
-import io.atomix.variables.DistributedValue;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -322,12 +321,12 @@ public class ClusterManager {
 	 *            - name of the vector to use
 	 * @return returns the
 	 */
-	public DistributedValue<List<Boolean>> createValue(String name) {
-		DistributedValue<List<Boolean>> r = null;
+	public DistributedAtomicValue<List<Boolean>> createValue(String name) {
+		DistributedAtomicValue<List<Boolean>> r = null;
 		log.info("Initializing value {}", name);
 		try {
 			if (server.isPresent()) {
-				r = server.get().<DistributedValue<List<Boolean>>> create(name, DistributedValue.class)
+				r = server.get().<DistributedAtomicValue<List<Boolean>>> create(name, DistributedAtomicValue.class)
 						.get(5, TimeUnit.SECONDS);
 				log.info("Value created");
 			}
@@ -378,11 +377,11 @@ public class ClusterManager {
 			return list;
 		}
 
-		private DistributedValue<List<Boolean>> createValue(String name) {
-			DistributedValue<List<Boolean>> r = null;
+		private DistributedAtomicValue<List<Boolean>> createValue(String name) {
+			DistributedAtomicValue<List<Boolean>> r = null;
 			log.info("Initializing value {}", name);
 			try {
-				r = server.get().<DistributedValue<List<Boolean>>> create(name, DistributedValue.class)
+				r = server.get().<DistributedAtomicValue<List<Boolean>>> create(name, DistributedAtomicValue.class)
 						.get();
 			} catch (InterruptedException | ExecutionException e) {
 				log.error("Unable to create the value {}, due to {}", name, e.getMessage());
@@ -404,7 +403,7 @@ public class ClusterManager {
 
 			try {
 				// Create a leader election resource.
-				election = server.get().create("election", DistributedLeaderElection.TYPE).get(2, TimeUnit.SECONDS);
+				election = server.get().create("election", DistributedLeaderElection.class).get(2, TimeUnit.SECONDS);
 
 				// Register a callback to be called when this election instance
 				// is elected the leader
@@ -534,15 +533,13 @@ public class ClusterManager {
 			builder.withTransport(new NettyTransport());
 
 			server = Optional.of(builder.build());
-			server.get().open();//.join();
-
-			// .thenRun(() -> {
+			server.get().open().thenRun(() -> {
 			log.info("RAFT Server has started");
 			// join(settings.getName());
 
 			// value = Optional.of(createValue("vector");
 
-			// });
+			 });
 		}
 
 		/**

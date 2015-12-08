@@ -35,7 +35,8 @@
 		<!-- Test -->
 		<junit.version>4.11</junit.version>
 
-		<io-atomix.version>0.1.0-SNAPSHOT</io-atomix.version>
+		<!-- >io-atomix.version>0.1.0-SNAPSHOT</io-atomix.version-->
+		<io-atomix.version>0.1.0-beta4</io-atomix.version>
 
 	</properties>
 	<licenses>
