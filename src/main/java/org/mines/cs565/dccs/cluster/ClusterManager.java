@@ -51,6 +51,7 @@ import io.atomix.collections.DistributedQueue;
 import io.atomix.coordination.DistributedLeaderElection;
 import io.atomix.coordination.DistributedMembershipGroup;
 import io.atomix.copycat.server.CopycatServer;
+import io.atomix.copycat.server.storage.Storage;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -440,7 +441,7 @@ public class ClusterManager {
 			start(l);
 
 //			join(settings.getName());
-//			election();
+			election();
 			
 			DistributedAtomicValue<List<Boolean>> value = createValue("vector");
 			
@@ -484,10 +485,10 @@ public class ClusterManager {
 
 			 // TODO: Need to something for storage
 			 //			 Storage s = new Storage(logDir, StorageLevel.DISK);
-//			 Storage s = new Storage(logDir);
-// 			 builder.withStorage(s);
+			 Storage s = new Storage(logDir);
+			 builder.withStorage(s);
 
-//			builder.withTransport(new NettyTransport());
+			builder.withTransport(new NettyTransport());
 			 
 			server = Optional.of(builder.build());
 			server.get().open().thenRun(() -> {
