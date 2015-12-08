@@ -309,6 +309,29 @@ public class ClusterManager {
 	}
 
 	/**
+	 * Creates the distributed vector
+	 * 
+	 * @param name - name of the vector to use
+	 * @return returns the 
+	 */
+	public DistributedAtomicValue<List<Boolean>> createValue(String name) {
+		DistributedAtomicValue<List<Boolean>> r = null;
+		log.info("Initializing value {}", name);
+		try {
+			r = server.get().<DistributedAtomicValue<List<Boolean>>>create(name, DistributedAtomicValue.class).get();
+		} catch (InterruptedException | ExecutionException e) {
+			log.error("Unable to create the value {}, due to {}", name, e.getMessage());
+		}
+		
+//		.thenAccept(value -> {
+			log.info("Value created");
+//		});
+		
+		return r;
+	}
+
+	
+	/**
 	 * The Cluster is an internal class that manages the cluster as a background
 	 * Service.
 	 * 
@@ -321,8 +344,7 @@ public class ClusterManager {
 		Optional<DistributedMembershipGroup> group;
 		DistributedLeaderElection election; 			// Create a leader election resource.
 		AtomicBoolean isLeader = new AtomicBoolean(Boolean.FALSE);
-		DistributedAtomicValue<List<Boolean>> value;
-		
+
 		/**
 		 * Convert a list of Gossip Members to RAFT Cluster Members
 		 * 
@@ -505,7 +527,7 @@ public class ClusterManager {
 				  log.info("RAFT Server has started");
 //					join(settings.getName());
 					
-					value = createValue("vector");
+//					value = Optional.of(createValue("vector");
 
 //			});			
 		}
