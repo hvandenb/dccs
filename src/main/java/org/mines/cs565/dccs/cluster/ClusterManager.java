@@ -439,9 +439,6 @@ public class ClusterManager {
 			log.info("Quorum met time to start the server");
 			
 			start(l);
-
-//			join(settings.getName());
-			election();
 			
 			DistributedAtomicValue<List<Boolean>> value = createValue("vector");
 			
@@ -491,8 +488,11 @@ public class ClusterManager {
 			builder.withTransport(new NettyTransport());
 			 
 			server = Optional.of(builder.build());
+			// Starting the server in an async manner..
 			server.get().open().thenRun(() -> {
 				  log.info("RAFT Server has started");
+//					join(settings.getName());
+					election();
 			});			
 		}
 
