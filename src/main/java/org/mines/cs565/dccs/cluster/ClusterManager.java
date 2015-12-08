@@ -500,13 +500,20 @@ public class ClusterManager {
 			 
 			server = Optional.of(builder.build());
 			// Starting the server in an async manner..
-			server.get().open().thenRun(() -> {
+			try {
+				server.get().open().get();
+			} catch (InterruptedException | ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+//			.thenRun(() -> {
 				  log.info("RAFT Server has started");
-					join(settings.getName());
+//					join(settings.getName());
 					
 					value = createValue("vector");
 
-			});			
+//			});			
 		}
 
 
