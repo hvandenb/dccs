@@ -479,7 +479,7 @@ public class ClusterManager {
 			
 //			serverBuilder = CopycatServer.builder(address, members);
 			builder.withTransport(new NettyTransport());
-			builder.withElectionTimeout(Duration.ofSeconds(settings.getElectinTimeout()));
+			builder.withElectionTimeout(Duration.ofSeconds(settings.getElectionTimeout()));
 			builder.withHeartbeatInterval(Duration.ofSeconds(settings.getHeartBeat()));
 
 			 // TODO: Need to something for storage

@@ -33,5 +33,5 @@ public class ClusterProperties {
 	/** Minimum quorum we need to ensure we can do leader election etc. (n/2)+1 */
 	private int minimumQuorum = ClusterConstants.DEFAULT_MIN_QUORUM;
 	/** Timeout as to when to start an election in (s)econds */
-	private int electinTimeout = ClusterConstants.DEFAULT_ELECTION_TIMEOUT;
+	private int electionTimeout = ClusterConstants.DEFAULT_ELECTION_TIMEOUT;
 }
