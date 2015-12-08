@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -23,9 +24,7 @@ import java.util.function.Consumer;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
-import org.mockito.internal.util.collections.Sets;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.google.code.gossip.GossipMember;
@@ -43,7 +42,6 @@ import com.google.common.collect.Lists;
 import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.AbstractExecutionThreadService;
 
-import io.atomix.Atomix;
 import io.atomix.AtomixReplica;
 import io.atomix.AtomixReplica.Builder;
 import io.atomix.atomic.DistributedAtomicValue;
@@ -53,10 +51,7 @@ import io.atomix.collections.DistributedQueue;
 import io.atomix.coordination.DistributedLeaderElection;
 import io.atomix.coordination.DistributedMembershipGroup;
 import io.atomix.copycat.server.CopycatServer;
-import io.atomix.copycat.server.storage.Storage;
-import io.atomix.copycat.server.storage.StorageLevel;
 import lombok.extern.slf4j.Slf4j;
-import java.time.Duration;
 
 /**
  * 
