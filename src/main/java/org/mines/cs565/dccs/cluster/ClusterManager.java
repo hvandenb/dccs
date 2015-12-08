@@ -71,8 +71,7 @@ public class ClusterManager {
 
 	private Splitter splitter;
 
-//	private static Optional<AtomixReplica> server = null;
-	private static Optional<AtomixReplica> server = null;
+	private static Optional<AtomixReplica> server = Optional.absent();
 	
 	/**
 	 * Constructor...
@@ -322,8 +321,7 @@ public class ClusterManager {
 		Optional<DistributedMembershipGroup> group;
 		DistributedLeaderElection election; 			// Create a leader election resource.
 		AtomicBoolean isLeader = new AtomicBoolean(Boolean.FALSE);
-		
-		CopycatServer.Builder serverBuilder;
+		DistributedAtomicValue<List<Boolean>> value;
 		
 		/**
 		 * Convert a list of Gossip Members to RAFT Cluster Members
@@ -346,10 +344,16 @@ public class ClusterManager {
 
 		private DistributedAtomicValue<List<Boolean>> createValue(String name) {
 			DistributedAtomicValue<List<Boolean>> r = null;
+			log.info("Initializing value {}", name);
+			try {
+				r = server.get().<DistributedAtomicValue<List<Boolean>>>create(name, DistributedAtomicValue.class).get();
+			} catch (InterruptedException | ExecutionException e) {
+				log.error("Unable to create the value {}, due to {}", name, e.getMessage());
+			}
 			
-			server.get().<DistributedAtomicValue<List<Boolean>>>create(name, DistributedAtomicValue.class).thenAccept(value -> {
+//			.thenAccept(value -> {
 				log.info("Value created");
-			});
+//			});
 			
 			return r;
 		}
@@ -372,7 +376,7 @@ public class ClusterManager {
 			} catch (InterruptedException | ExecutionException e) {
 				log.error("Election was interupted due to [{}]", e.getMessage());
 			} catch (TimeoutException e) {
-				log.error("Election creation timeed out [{}]}", e.getLocalizedMessage());
+				log.error("Election creation timed out [{}]}", e.getLocalizedMessage());
 			}
 		}
 
@@ -384,7 +388,7 @@ public class ClusterManager {
 		private void join(String name) {
 			try {
 
-				log.info("Creating membership group");
+				log.info("Creating {} membership group", name);
 
 				group = Optional.of(server.get().create(name, DistributedMembershipGroup.class).get());
 
@@ -432,22 +436,29 @@ public class ClusterManager {
 				l = gossiper.members();
 				quorum = (l.size()/2)+1;
 				log.info("Quorum of [{}] not yet met, quorum: [{}] n: [{}]", settings.getMinimumQuorum(), quorum, l.size());
-
+				
+				
 				sleep(1000);			
 			}
 			
 			log.info("Quorum met time to start the server");
 			
 			start(l);
-			
-			DistributedAtomicValue<List<Boolean>> value = createValue("vector");
-			
+					
+			// Main loop for the cluster manager
 			while (isRunning()) {
 				l.clear();
 				l = gossiper.members();
 				quorum = (l.size()/2)+1;
 				log.info("live members [{}], quorum [{}] leader? [{}]", l.size(), quorum, isLeader.get());
-				sleep(1000);
+				
+				// Do an election when the service is open
+				if (server.isPresent() && server.get().isOpen()){
+						election();
+				}
+
+				
+				sleep(settings.getElectionTimeout());
 			}
 		}
 		
@@ -491,8 +502,10 @@ public class ClusterManager {
 			// Starting the server in an async manner..
 			server.get().open().thenRun(() -> {
 				  log.info("RAFT Server has started");
-//					join(settings.getName());
-					election();
+					join(settings.getName());
+					
+					value = createValue("vector");
+
 			});			
 		}
 
