@@ -499,13 +499,7 @@ public class ClusterManager {
 			builder.withTransport(new NettyTransport());
 			 
 			server = Optional.of(builder.build());
-			// Starting the server in an async manner..
-			try {
-				server.get().open().get();
-			} catch (InterruptedException | ExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			server.get().open().join();
 			
 //			.thenRun(() -> {
 				  log.info("RAFT Server has started");
