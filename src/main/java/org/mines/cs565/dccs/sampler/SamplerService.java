@@ -3,44 +3,30 @@
  */
 package org.mines.cs565.dccs.sampler;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
+import org.apache.commons.lang.BooleanUtils;
+import org.apache.commons.lang.StringUtils;
+import org.mines.cs565.dccs.cluster.ClusterManager;
+import org.mines.cs565.dccs.generator.SignalWriter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.actuate.metrics.CounterService;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import com.google.common.net.HostAndPort;
 import com.google.common.util.concurrent.AbstractScheduledService;
-import com.google.common.util.concurrent.AbstractScheduledService.Scheduler;
 
-import io.atomix.atomic.DistributedAtomicValue;
-import io.atomix.catalyst.transport.Address;
+import io.atomix.variables.DistributedValue;
 import lombok.extern.slf4j.Slf4j;
-
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.annotation.Resource;
-
-import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.lang.StringUtils;
-import org.mines.cs565.dccs.cluster.ClusterConstants;
-import org.mines.cs565.dccs.cluster.ClusterManager;
-import org.mines.cs565.dccs.generator.SignalWriter;
-import org.slf4j.Logger;
 
 /**
  * @author hvandenb
@@ -72,7 +58,7 @@ public class SamplerService extends AbstractScheduledService {
 	List<Measurement<Double>> measurements;
 	
 	// this will be our distributed 
-	Optional<DistributedAtomicValue<List<Boolean>>> rtv = Optional.absent();
+	Optional<DistributedValue<List<Boolean>>> rtv = Optional.absent();
 	
 	/**
 	 * Calculate the sampling interval based on a frequency in Hz. 
@@ -162,8 +148,9 @@ public class SamplerService extends AbstractScheduledService {
 			timingVector = generateTimingVector(properties.getBufferSize(), properties.getBufferSize() * 2, 1234);
 		
 		log.info("Vector: [{}] has been created of size {}", timingVector, timingVector.size());
+		// Check if we have a distributed vector available. 
+		rtv = Optional.fromNullable(clusterManager.createValue("vector"));
 		
-		rtv = Optional.of(clusterManager.createValue("vector"));
 		if (rtv.isPresent()) 
 		{
 			rtv.get().set(timingVector).thenRun(() -> {
@@ -178,7 +165,7 @@ public class SamplerService extends AbstractScheduledService {
 		measurements = Lists.newArrayListWithCapacity(properties.getBufferSize());
 		
 		// Start the scheduler
-		startAsync();	
+//		startAsync();	
 	    
 	}
 	/**

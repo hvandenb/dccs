@@ -81,7 +81,7 @@ public class SignalWriter {
 			try {
 				csvFilePrinter.get().printRecord(r);
 			} catch (IOException e) {
-				log.warn("Unable to write to csv file");
+				log.warn("Unable to write to csv file {}", e.getMessage());
 			}
 		}
 	}

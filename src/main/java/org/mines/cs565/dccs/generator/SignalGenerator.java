@@ -45,10 +45,7 @@ public class SignalGenerator  {
    
     /// Ticks per second on this CPU
 //    private long ticksPerSecond = Stopwatch.Frequency;
-	
-	public AudioFormat createAudioFormat() {
-		return new AudioFormat(1 / properties.getFrequency(), properties.getBits(), 1, true, true);
-	}
+
 
 
 	@PostConstruct

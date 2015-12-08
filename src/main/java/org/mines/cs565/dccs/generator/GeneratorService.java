@@ -81,7 +81,6 @@ public class GeneratorService extends AbstractScheduledService {
 	 */
 	@Override
 	protected void runOneIteration() throws Exception {
-		// TODO Auto-generated method stub
 		log.debug("Timer event on {}", this.getClass().getName());
 
 		this.sampleAndPersist();
@@ -98,7 +97,7 @@ public class GeneratorService extends AbstractScheduledService {
 	 */
 	@Override
 	protected Scheduler scheduler() {
-		log.debug("Creating a fixed scheduler");
+		log.info("Creating a fixed scheduler");
 		return Scheduler.newFixedRateSchedule(0, (long) (1000 / properties.getSamplingRate()), TimeUnit.MILLISECONDS);
 	}
 
