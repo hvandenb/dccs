@@ -45,7 +45,7 @@ mvn spring-boot:run
 java -jar target/mines-cs565-dccs-0.0.1-SNAPSHOT.jar
 ```
 
-Any of the properties can be overwriten by passing them along in the command line. The names are all documented in the [application.properties](dccs/src/main/resources/application.properties) file.
+Any of the properties can be overwriten by passing them along in the command line. The names are all documented in the [application.properties](src/main/resources/application.properties) file.
 
 ```
 java -jar target/mines-cs565-dccs-0.0.1-SNAPSHOT.jar --cluster.seeds=127.0.0.1:5555
